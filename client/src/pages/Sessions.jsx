@@ -28,7 +28,7 @@ export default function Sessions() {
   const [stats, setStats] = useState(null);
   const emptyForm = {
     student_id: '', subject_id: '', session_date: new Date().toISOString().split('T')[0],
-    start_time: '08:00', end_time: '10:00', rate_per_hour: '', status: 'completed', notes: ''
+    start_time: '08:00', end_time: '10:00', rate_type: 'hourly', rate_per_hour: '', rate_per_session: '', status: 'completed', notes: ''
   };
   const [form, setForm] = useState(emptyForm);
 
@@ -56,7 +56,7 @@ export default function Sessions() {
     setForm(s ? {
       student_id: s.student_id || '', subject_id: s.subject_id || '',
       session_date: s.session_date?.split('T')[0] || '', start_time: s.start_time?.substring(0, 5) || '',
-      end_time: s.end_time?.substring(0, 5) || '', rate_per_hour: s.rate_per_hour || '', status: s.status, notes: s.notes || ''
+      end_time: s.end_time?.substring(0, 5) || '', rate_type: s.rate_type || 'hourly', rate_per_hour: s.rate_per_hour || '', rate_per_session: s.rate_per_session || '', status: s.status, notes: s.notes || ''
     } : emptyForm);
     setShowModal(true);
   };
@@ -64,12 +64,16 @@ export default function Sessions() {
   const save = async (e) => {
     e.preventDefault();
     if (form.end_time <= form.start_time) { toast.error('Giờ kết thúc phải sau giờ bắt đầu'); return; }
+    const payload = { ...form };
+    if (payload.rate_type === 'hourly') payload.rate_per_session = null;
+    else payload.rate_per_hour = null;
+
     try {
       if (editing) {
-        await api.put(`/sessions/${editing.id}`, form);
+        await api.put(`/sessions/${editing.id}`, payload);
         toast.success('Đã cập nhật buổi dạy!');
       } else {
-        await api.post('/sessions', form);
+        await api.post('/sessions', payload);
         toast.success('Đã thêm buổi dạy!');
       }
       setShowModal(false);
@@ -90,7 +94,9 @@ export default function Sessions() {
     return Math.max(0, (eh * 60 + em - sh * 60 - sm) / 60);
   };
 
-  const previewAmount = calcHours(form.start_time, form.end_time) * (parseFloat(form.rate_per_hour) || 0);
+  const previewAmount = form.rate_type === 'per_session' 
+    ? parseFloat(form.rate_per_session) || 0 
+    : calcHours(form.start_time, form.end_time) * (parseFloat(form.rate_per_hour) || 0);
 
   const statusColor = { completed: 'success', cancelled: 'danger', pending: 'warning' };
   const statusLabel = { completed: 'Hoàn thành', cancelled: 'Đã hủy', pending: 'Chờ xử lý' };
@@ -177,7 +183,7 @@ export default function Sessions() {
                     <td>{s.subject_name || <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
                     <td style={{ color: 'var(--text-dim)' }}>{formatTime(s.start_time)} – {formatTime(s.end_time)}</td>
                     <td style={{ fontWeight: 600 }}>{parseFloat(s.duration_hours).toFixed(1)}h</td>
-                    <td>{formatVND(s.rate_per_hour)}₫</td>
+                    <td>{s.rate_type === 'hourly' ? `${formatVND(s.rate_per_hour)}₫/h` : `${formatVND(s.rate_per_session)}₫/buổi`}</td>
                     <td style={{ fontWeight: 700, color: 'var(--success)' }}>{formatVND(s.total_amount)}₫</td>
                     <td><span className={`badge badge-${statusColor[s.status]}`}>{statusLabel[s.status]}</span></td>
                     <td>
@@ -237,12 +243,30 @@ export default function Sessions() {
                       onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} required />
                   </div>
                 </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">Đơn giá / giờ (VNĐ) *</label>
-                    <input type="number" className="form-control" value={form.rate_per_hour} min="0" step="1000"
-                      onChange={e => setForm(f => ({ ...f, rate_per_hour: e.target.value }))} required placeholder="200000" />
+                <div className="form-group" style={{ padding: 12, border: '1px solid var(--border)', borderRadius: 8 }}>
+                  <label className="form-label" style={{ marginBottom: 12 }}>Cách tính lương *</label>
+                  <div style={{ display: 'flex', gap: 20, marginBottom: 12 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                      <input type="radio" name="rate_type" value="hourly"
+                             checked={form.rate_type === 'hourly'} onChange={e => setForm(f => ({...f, rate_type: e.target.value}))} />
+                      <span>Theo giờ</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                      <input type="radio" name="rate_type" value="per_session"
+                             checked={form.rate_type === 'per_session'} onChange={e => setForm(f => ({...f, rate_type: e.target.value}))} />
+                      <span>Theo buổi</span>
+                    </label>
                   </div>
+                  {form.rate_type === 'hourly' ? (
+                    <input type="number" className="form-control" required placeholder="Đơn giá / giờ (VNĐ)" min="0" step="1000"
+                           value={form.rate_per_hour} onChange={e => setForm(f => ({...f, rate_per_hour: e.target.value}))} />
+                  ) : (
+                    <input type="number" className="form-control" required placeholder="Đơn giá / buổi (VNĐ)" min="0" step="1000"
+                           value={form.rate_per_session} onChange={e => setForm(f => ({...f, rate_per_session: e.target.value}))} />
+                  )}
+                </div>
+
+                <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Trạng thái</label>
                     <select className="form-control" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
@@ -254,12 +278,10 @@ export default function Sessions() {
                 </div>
 
                 {/* Preview */}
-                {form.start_time && form.end_time && form.rate_per_hour && (
-                  <div className="alert alert-info" style={{ justifyContent: 'space-between' }}>
-                    <span>⏱ {calcHours(form.start_time, form.end_time).toFixed(1)} giờ</span>
-                    <span style={{ fontWeight: 700 }}>💵 {previewAmount.toLocaleString('vi-VN')}₫</span>
-                  </div>
-                )}
+                <div className="alert alert-info" style={{ justifyContent: 'space-between' }}>
+                  <span>⏱ {calcHours(form.start_time, form.end_time).toFixed(1)} giờ</span>
+                  <span style={{ fontWeight: 700 }}>💵 {previewAmount.toLocaleString('vi-VN')}₫</span>
+                </div>
 
                 <div className="form-group">
                   <label className="form-label">Ghi chú</label>

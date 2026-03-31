@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
-import { Eye, EyeOff, Lock, User, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, Lock, User, ArrowRight, GraduationCap } from 'lucide-react';
 
 export default function Login() {
   const { login } = useAuth();
@@ -35,7 +35,9 @@ export default function Login() {
 
       <div className="auth-card">
         <div className="auth-logo">
-          <div className="auth-logo-icon">💰</div>
+          <div className="auth-logo-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <GraduationCap size={32} color="white" />
+          </div>
           <div className="auth-title">TutorPay</div>
           <div className="auth-sub">Chào mừng trở lại! Đăng nhập để tiếp tục</div>
         </div>

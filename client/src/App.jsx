@@ -11,6 +11,7 @@ import Payments from './pages/Payments';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import AdminPanel from './pages/AdminPanel';
+import TimeSlots from './pages/TimeSlots';
 
 const PrivateRoute = ({ children, adminOnly = false }) => {
   const { user, loading } = useAuth();
@@ -57,6 +58,7 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="sessions" element={<Sessions />} />
             <Route path="students" element={<Students />} />
+            <Route path="timeslots" element={<TimeSlots />} />
             <Route path="payments" element={<Payments />} />
             <Route path="reports" element={<Reports />} />
             <Route path="settings" element={<Settings />} />

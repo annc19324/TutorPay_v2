@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
-import { Eye, EyeOff, Lock, User, Mail, Phone, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, Lock, User, Mail, Phone, ArrowRight, GraduationCap } from 'lucide-react';
 
 export default function Register() {
   const { register } = useAuth();
@@ -40,7 +40,9 @@ export default function Register() {
 
       <div className="auth-card" style={{ maxWidth: 500 }}>
         <div className="auth-logo">
-          <div className="auth-logo-icon">💰</div>
+          <div className="auth-logo-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <GraduationCap size={32} color="white" />
+          </div>
           <div className="auth-title">Tạo Tài Khoản</div>
           <div className="auth-sub">Bắt đầu quản lý lương gia sư ngay hôm nay</div>
         </div>

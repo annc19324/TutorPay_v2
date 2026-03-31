@@ -50,6 +50,7 @@ app.use('/api/sessions', require('./routes/sessions'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/settings', require('./routes/settings'));
+app.use('/api/timeslots', require('./routes/timeslots'));
 
 // Health check
 app.get('/health', (req, res) => {

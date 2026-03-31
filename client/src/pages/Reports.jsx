@@ -10,8 +10,14 @@ const YEARS = [2023, 2024, 2025, 2026];
 
 export default function Reports() {
   const [students, setStudents] = useState([]);
-  const [month, setMonth] = useState(now.getMonth() + 1);
-  const [year, setYear] = useState(now.getFullYear());
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date(now.getFullYear(), now.getMonth(), 1);
+    return d.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => {
+    const d = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return d.toISOString().split('T')[0];
+  });
   const [yearlyYear, setYearlyYear] = useState(now.getFullYear());
   const [downloading, setDownloading] = useState('');
 
@@ -63,18 +69,19 @@ export default function Reports() {
           </div>
 
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <select className="form-control" style={{ width: 'auto' }} value={month} onChange={e => setMonth(e.target.value)}>
-              {MONTHS.map(m => <option key={m} value={m}>Tháng {m}</option>)}
-            </select>
-            <select className="form-control" style={{ width: 'auto' }} value={year} onChange={e => setYear(e.target.value)}>
-              {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <input type="date" className="form-control" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            </div>
+            <div style={{ color: 'var(--text-dim)' }}>đến</div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <input type="date" className="form-control" value={endDate} onChange={e => setEndDate(e.target.value)} />
+            </div>
             <button
               className="btn btn-primary"
               disabled={downloading === 'salary'}
               onClick={() => downloadPDF(
-                `/reports/salary-report?month=${month}&year=${year}`,
-                `bang-luong-thang-${month}-${year}.pdf`,
+                `/reports/salary-report?startDate=${startDate}&endDate=${endDate}`,
+                `bang-luong-${startDate}-den-${endDate}.pdf`,
                 'salary'
               )}
             >

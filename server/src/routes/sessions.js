@@ -153,9 +153,9 @@ router.get('/stats', async (req, res) => {
 // Create session
 router.post('/', async (req, res) => {
   try {
-    const { student_id, subject_id, session_date, start_time, end_time, rate_per_hour, status, notes } = req.body;
+    const { student_id, subject_id, session_date, start_time, end_time, rate_type, rate_per_hour, rate_per_session, status, notes } = req.body;
 
-    if (!session_date || !start_time || !end_time || !rate_per_hour) {
+    if (!session_date || !start_time || !end_time) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
@@ -163,11 +163,19 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'End time must be after start time' });
     }
 
+    const [sh, sm] = start_time.split(':').map(Number);
+    const [eh, em] = end_time.split(':').map(Number);
+    const durationHours = (eh * 60 + em - sh * 60 - sm) / 60;
+    const finalRateType = rate_type || 'hourly';
+    const totalAmount = finalRateType === 'per_session'
+      ? parseFloat(rate_per_session || 0)
+      : durationHours * parseFloat(rate_per_hour || 0);
+
     const result = await pool.query(
-      `INSERT INTO sessions (user_id, student_id, subject_id, session_date, start_time, end_time, rate_per_hour, status, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO sessions (user_id, student_id, subject_id, session_date, start_time, end_time, rate_type, rate_per_hour, rate_per_session, total_amount, status, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
-      [req.user.id, student_id || null, subject_id || null, session_date, start_time, end_time, rate_per_hour, status || 'completed', notes]
+      [req.user.id, student_id || null, subject_id || null, session_date, start_time, end_time, finalRateType, rate_per_hour || null, rate_per_session || null, totalAmount, status || 'completed', notes]
     );
 
     res.status(201).json({ session: result.rows[0] });
@@ -180,19 +188,28 @@ router.post('/', async (req, res) => {
 // Update session
 router.put('/:id', async (req, res) => {
   try {
-    const { student_id, subject_id, session_date, start_time, end_time, rate_per_hour, status, notes } = req.body;
+    const { student_id, subject_id, session_date, start_time, end_time, rate_type, rate_per_hour, rate_per_session, status, notes } = req.body;
+
+    const [sh, sm] = start_time.split(':').map(Number);
+    const [eh, em] = end_time.split(':').map(Number);
+    const durationHours = (eh * 60 + em - sh * 60 - sm) / 60;
+    const finalRateType = rate_type || 'hourly';
+    const totalAmount = finalRateType === 'per_session'
+      ? parseFloat(rate_per_session || 0)
+      : durationHours * parseFloat(rate_per_hour || 0);
 
     const result = await pool.query(
       `UPDATE sessions SET
         student_id=$1, subject_id=$2, session_date=$3, start_time=$4, end_time=$5,
-        rate_per_hour=$6, status=$7, notes=$8, updated_at=NOW()
-       WHERE id=$9 AND user_id=$10
+        rate_type=$6, rate_per_hour=$7, rate_per_session=$8, total_amount=$9, status=$10, notes=$11, updated_at=NOW()
+       WHERE id=$12 AND user_id=$13
        RETURNING *`,
-      [student_id, subject_id, session_date, start_time, end_time, rate_per_hour, status, notes, req.params.id, req.user.id]
+      [student_id || null, subject_id || null, session_date, start_time, end_time, finalRateType, rate_per_hour || null, rate_per_session || null, totalAmount, status, notes, req.params.id, req.user.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ message: 'Session not found' });
     res.json({ session: result.rows[0] });
   } catch (error) {
+    console.error('Update session error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

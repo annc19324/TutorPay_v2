@@ -2,7 +2,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, BookOpen, Users, CreditCard, BarChart3,
-  Settings, LogOut, Shield, GraduationCap, ChevronRight
+  Settings, LogOut, Shield, GraduationCap, ChevronRight, Clock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -10,6 +10,7 @@ const navItems = [
   { label: 'Dashboard', to: '/', icon: LayoutDashboard, end: true },
   { label: 'Buổi Dạy', to: '/sessions', icon: BookOpen },
   { label: 'Học Sinh', to: '/students', icon: Users },
+  { label: 'Lịch Chỉ Định', to: '/timeslots', icon: Clock },
   { label: 'Thanh Toán', to: '/payments', icon: CreditCard },
   { label: 'Báo Cáo', to: '/reports', icon: BarChart3 },
 ];
@@ -28,7 +29,9 @@ export default function Layout() {
     <div className="app-layout">
       <aside className="sidebar">
         <div className="sidebar-logo">
-          <div className="logo-icon">💰</div>
+          <div className="logo-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <GraduationCap size={24} color="white" />
+          </div>
           <div>
             <div className="logo-text">TutorPay</div>
             <div className="logo-sub">SALARY MANAGER</div>

@@ -100,12 +100,15 @@ const drawPDFHeader = (doc, title, subtitle, user) => {
   return 130;
 };
 
-// Monthly salary report PDF
+// Date range salary report PDF
 router.get('/salary-report', async (req, res) => {
   try {
-    const { month, year } = req.query;
-    const mth = month || new Date().getMonth() + 1;
-    const yr = year || new Date().getFullYear();
+    const { startDate, endDate } = req.query;
+    
+    // Default to current month if not provided
+    const now = new Date();
+    const stDate = startDate || new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const edDate = endDate || new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
 
     const [userResult, sessionsResult, summaryResult] = await Promise.all([
       pool.query('SELECT * FROM users WHERE id=$1', [req.user.id]),
@@ -115,10 +118,10 @@ router.get('/salary-report', async (req, res) => {
          LEFT JOIN students st ON st.id = sess.student_id
          LEFT JOIN subjects sub ON sub.id = sess.subject_id
          WHERE sess.user_id = $1
-           AND EXTRACT(MONTH FROM sess.session_date) = $2
-           AND EXTRACT(YEAR FROM sess.session_date) = $3
+           AND sess.session_date >= $2
+           AND sess.session_date <= $3
          ORDER BY sess.session_date, sess.start_time`,
-        [req.user.id, mth, yr]
+        [req.user.id, stDate, edDate]
       ),
       pool.query(
         `SELECT 
@@ -126,8 +129,8 @@ router.get('/salary-report', async (req, res) => {
           COALESCE(SUM(duration_hours), 0) as total_hours,
           COALESCE(SUM(total_amount) FILTER (WHERE status='completed'), 0) as total_amount
          FROM sessions
-         WHERE user_id=$1 AND EXTRACT(MONTH FROM session_date)=$2 AND EXTRACT(YEAR FROM session_date)=$3`,
-        [req.user.id, mth, yr]
+         WHERE user_id=$1 AND session_date >= $2 AND session_date <= $3`,
+        [req.user.id, stDate, edDate]
       )
     ]);
 
@@ -135,11 +138,11 @@ router.get('/salary-report', async (req, res) => {
     const sessions = sessionsResult.rows;
     const summary = summaryResult.rows[0];
 
-    const monthNames = ['', 'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
-      'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
+    const displayStart = formatDate(stDate);
+    const displayEnd = formatDate(edDate);
 
-    const doc = createPDFBase(res, `bang-luong-${yr}-${mth}.pdf`);
-    let y = drawPDFHeader(doc, 'BẢNG LƯƠNG GIA SƯ', `${monthNames[mth]} - ${yr}`, user);
+    const doc = createPDFBase(res, `bang-luong-${stDate}-to-${edDate}.pdf`);
+    let y = drawPDFHeader(doc, 'BẢNG LƯƠNG GIA SƯ', `Từ ${displayStart} đến ${displayEnd}`, user);
 
     // Summary box
     y += 10;
