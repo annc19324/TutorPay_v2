@@ -251,14 +251,16 @@ router.get('/student-report/:studentId', async (req, res) => {
          FROM sessions sess
          LEFT JOIN subjects sub ON sub.id = sess.subject_id
          WHERE sess.student_id=$1 AND sess.user_id=$2
-         ORDER BY sess.session_date DESC`,
+         ORDER BY sess.session_date ASC`,
         [req.params.studentId, req.user.id]
       ),
       pool.query(
-        'SELECT * FROM payments WHERE student_id=$1 AND user_id=$2 ORDER BY payment_date DESC',
+        'SELECT * FROM payments WHERE student_id=$1 AND user_id=$2 ORDER BY payment_date ASC',
         [req.params.studentId, req.user.id]
       )
     ]);
+    
+    const { hideSubject, hideTime, hideDuration, hideStatus, hidePrice, hideAmount } = req.query;
 
     if (studentResult.rows.length === 0) {
       return res.status(404).json({ message: 'Student not found' });
@@ -279,43 +281,63 @@ router.get('/student-report/:studentId', async (req, res) => {
     let y = drawPDFHeader(doc, '', `Báo cáo học sinh: ${student.full_name}`);
 
     // Student info
-    y += 10;
-    doc.fillColor('#e8eaf6').roundedRect(40, y, 515, 80, 8).fill();
-    doc.fillColor('#1a237e').font('Roboto-Bold').fontSize(10).text('THÔNG TIN HỌC SINH', 50, y + 8);
-    doc.fillColor('#333').font('Roboto').fontSize(9)
-      .text(`Họ và tên: ${student.full_name}`, 50, y + 25)
-      .text(`Lớp: ${student.grade || 'N/A'}`, 250, y + 25)
-      .text(`Phụ huynh: ${student.parent_name || 'N/A'}`, 50, y + 42)
-      .text(`SĐT: ${student.parent_phone || 'N/A'}`, 250, y + 42)
-      .text(`Tổng học phí: ${formatVND(totalOwe)}`, 50, y + 59)
-      .text(`Đã thanh toán: ${formatVND(totalPaid)}`, 220, y + 59)
-      .text(`CÒN NỢ: ${formatVND(balance)}`, 390, y + 59);
-    y += 100;
-    
+    if (hideSummary !== 'true') {
+      y += 10;
+      doc.fillColor('#e8eaf6').roundedRect(40, y, 515, 80, 8).fill();
+      doc.fillColor('#1a237e').font('Roboto-Bold').fontSize(10).text('THÔNG TIN HỌC SINH', 50, y + 8);
+      doc.fillColor('#333').font('Roboto').fontSize(9)
+        .text(`Họ và tên: ${student.full_name}`, 50, y + 25)
+        .text(`Lớp: ${student.grade || 'N/A'}`, 250, y + 25)
+        .text(`Phụ huynh: ${student.parent_name || 'N/A'}`, 50, y + 42)
+        .text(`SĐT: ${student.parent_phone || 'N/A'}`, 250, y + 42)
+        .text(`Tổng học phí: ${formatVND(totalOwe)}`, 50, y + 59)
+        .text(`Đã thanh toán: ${formatVND(totalPaid)}`, 220, y + 59)
+        .text(`CÒN NỢ: ${formatVND(balance)}`, 390, y + 59);
+      y += 100;
+    } else {
+      y += 20;
+    }
+
     doc.fillColor('#1a237e').font('Roboto-Bold').fontSize(12).text('CHI TIẾT BUỔI HỌC', 40, y);
     y += 20;
 
     if (sessions.length > 0) {
-      const headers = ['Ngày', 'Môn học', 'Giờ bắt đầu', 'Giờ kết thúc', 'Số giờ', 'Đơn giá', 'Thành tiền', 'Trạng thái'];
-      const colWidths = [65, 75, 70, 70, 50, 75, 80, 60];
-      y = drawTableHeader(doc, headers, colWidths, 28, y);
+      const headers = ['Thứ', 'Ngày'];
+      const colWidths = [45, 65];
+      
+      if (hideSubject !== 'true') { headers.push('Môn học'); colWidths.push(85); }
+      if (hideTime !== 'true') { headers.push('Bắt đầu', 'Kết thúc'); colWidths.push(50, 50); }
+      if (hideDuration !== 'true') { headers.push('Giờ'); colWidths.push(40); }
+      if (hidePrice !== 'true') { headers.push('Đơn giá'); colWidths.push(75); }
+      if (hideAmount !== 'true') { headers.push('Học phí'); colWidths.push(80); }
+      if (hideStatus !== 'true') { headers.push('Trạng thái'); colWidths.push(65); }
+
+      const totalWidth = colWidths.reduce((a, b) => a + b, 0);
+      const startX = (595 - totalWidth) / 2;
+
+      y = drawTableHeader(doc, headers, colWidths, startX, y);
       sessions.forEach((sess, i) => {
-        if (y > 750) { doc.addPage(); y = 30; y = drawTableHeader(doc, headers, colWidths, 28, y); }
+        if (y > 750) { doc.addPage(); y = 30; y = drawTableHeader(doc, headers, colWidths, startX, y); }
         
         const rateDisplay = sess.rate_type === 'hourly' 
           ? formatVND(sess.rate_per_hour)
           : formatVND(sess.rate_per_session);
 
-        y = drawTableRow(doc, [
-          formatDate(sess.session_date),
-          sess.subject_name || 'N/A',
-          formatTime(sess.start_time),
-          formatTime(sess.end_time),
-          parseFloat(sess.duration_hours || 0).toFixed(1),
-          rateDisplay,
-          formatVND(sess.total_amount),
-          sess.status === 'completed' ? 'Hoàn thành' : sess.status === 'cancelled' ? 'Hủy' : 'Chờ'
-        ], colWidths, 28, y, i % 2 === 0);
+        let rowData = [
+          getDayOfWeek(sess.session_date),
+          formatDate(sess.session_date)
+        ];
+        
+        if (hideSubject !== 'true') rowData.push(sess.subject_name || 'N/A');
+        if (hideTime !== 'true') rowData.push(formatTime(sess.start_time), formatTime(sess.end_time));
+        if (hideDuration !== 'true') rowData.push(parseFloat(sess.duration_hours || 0).toFixed(1));
+        if (hidePrice !== 'true') rowData.push(rateDisplay);
+        if (hideAmount !== 'true') rowData.push(formatVND(sess.total_amount));
+        if (hideStatus !== 'true') {
+          rowData.push(sess.status === 'completed' ? 'Hoàn thành' : sess.status === 'cancelled' ? 'Hủy' : 'Chờ');
+        }
+
+        y = drawTableRow(doc, rowData, colWidths, startX, y, i % 2 === 0);
       });
     }
 

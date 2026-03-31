@@ -76,6 +76,41 @@ export default function Reports() {
       </div>
 
       <div style={{ display: 'grid', gap: 24 }}>
+        {/* Global Print Settings */}
+        <div className="card">
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'white', marginBottom: 16 }}>⚙️ Tuỳ chọn hiển thị khi xuất PDF</div>
+          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
+              <input type="checkbox" checked={reportOptions.hideSummary} onChange={e => setReportOptions(r => ({...r, hideSummary: e.target.checked}))} />
+              <span style={{ color: reportOptions.hideSummary ? 'var(--text-dim)' : 'var(--text)' }}>Ẩn Thông tin học sinh / Khối Tổng kết</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
+              <input type="checkbox" checked={reportOptions.hideSubject} onChange={e => setReportOptions(r => ({...r, hideSubject: e.target.checked}))} />
+              <span style={{ color: reportOptions.hideSubject ? 'var(--text-dim)' : 'var(--text)' }}>Ẩn cột Môn</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
+              <input type="checkbox" checked={reportOptions.hideTime} onChange={e => setReportOptions(r => ({...r, hideTime: e.target.checked}))} />
+              <span style={{ color: reportOptions.hideTime ? 'var(--text-dim)' : 'var(--text)' }}>Ẩn Giờ Bắt đầu / Kết thúc</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
+              <input type="checkbox" checked={reportOptions.hideDuration} onChange={e => setReportOptions(r => ({...r, hideDuration: e.target.checked}))} />
+              <span style={{ color: reportOptions.hideDuration ? 'var(--text-dim)' : 'var(--text)' }}>Ẩn Số giờ</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
+              <input type="checkbox" checked={reportOptions.hidePrice} onChange={e => setReportOptions(r => ({...r, hidePrice: e.target.checked}))} />
+              <span style={{ color: reportOptions.hidePrice ? 'var(--text-dim)' : 'var(--text)' }}>Ẩn Đơn giá</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
+              <input type="checkbox" checked={reportOptions.hideAmount} onChange={e => setReportOptions(r => ({...r, hideAmount: e.target.checked}))} />
+              <span style={{ color: reportOptions.hideAmount ? 'var(--text-dim)' : 'var(--text)' }}>Ẩn Học phí (Thành tiền)</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
+              <input type="checkbox" checked={reportOptions.hideStatus} onChange={e => setReportOptions(r => ({...r, hideStatus: e.target.checked}))} />
+              <span style={{ color: reportOptions.hideStatus ? 'var(--text-dim)' : 'var(--text)' }}>Ẩn Trạng thái</span>
+            </label>
+          </div>
+        </div>
+
         {/* Monthly salary report */}
         <div className="card">
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
@@ -112,49 +147,7 @@ export default function Reports() {
               Xuất PDF Bảng Lương
             </button>
           </div>
-          
-          <div style={{ marginTop: 24, padding: 16, background: 'var(--bg-input)', borderRadius: 12, border: '1px solid var(--border)' }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'white', marginBottom: 12 }}>Tuỳ chọn hiển thị khi in:</div>
-            <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
-                <input type="checkbox" checked={reportOptions.hideSummary} onChange={e => setReportOptions(r => ({...r, hideSummary: e.target.checked}))} />
-                <span style={{ color: reportOptions.hideSummary ? 'var(--text-dim)' : 'var(--text)' }}>Ẩn Khối Tổng kết</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
-                <input type="checkbox" checked={reportOptions.hideSubject} onChange={e => setReportOptions(r => ({...r, hideSubject: e.target.checked}))} />
-                <span style={{ color: reportOptions.hideSubject ? 'var(--text-dim)' : 'var(--text)' }}>Ẩn cột Môn</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
-                <input type="checkbox" checked={reportOptions.hideTime} onChange={e => setReportOptions(r => ({...r, hideTime: e.target.checked}))} />
-                <span style={{ color: reportOptions.hideTime ? 'var(--text-dim)' : 'var(--text)' }}>Ẩn Giờ Bắt đầu / Kết thúc</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
-                <input type="checkbox" checked={reportOptions.hideDuration} onChange={e => setReportOptions(r => ({...r, hideDuration: e.target.checked}))} />
-                <span style={{ color: reportOptions.hideDuration ? 'var(--text-dim)' : 'var(--text)' }}>Ẩn Số giờ</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
-                <input type="checkbox" checked={reportOptions.hidePrice} onChange={e => setReportOptions(r => ({...r, hidePrice: e.target.checked}))} />
-                <span style={{ color: reportOptions.hidePrice ? 'var(--text-dim)' : 'var(--text)' }}>Ẩn Đơn giá</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
-                <input type="checkbox" checked={reportOptions.hideAmount} onChange={e => setReportOptions(r => ({...r, hideAmount: e.target.checked}))} />
-                <span style={{ color: reportOptions.hideAmount ? 'var(--text-dim)' : 'var(--text)' }}>Ẩn Học phí (Thành tiền)</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
-                <input type="checkbox" checked={reportOptions.hideStatus} onChange={e => setReportOptions(r => ({...r, hideStatus: e.target.checked}))} />
-                <span style={{ color: reportOptions.hideStatus ? 'var(--text-dim)' : 'var(--text)' }}>Ẩn Trạng thái</span>
-              </label>
-            </div>
-          </div>
-
-          <div style={{ marginTop: 16, padding: '12px 16px', background: 'rgba(79,70,229,0.05)', borderRadius: 10, display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-            <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>✅ Danh sách tất cả buổi dạy</div>
-            <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>✅ Tổng giờ và thu nhập</div>
-            <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>✅ Thống kê theo học sinh</div>
-            <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>✅ Định dạng PDF chuyên nghiệp</div>
-          </div>
         </div>
-
         {/* Student report */}
         <div className="card">
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
@@ -180,11 +173,14 @@ export default function Reports() {
                   <button
                     className="btn btn-success btn-sm"
                     disabled={downloading === s.id}
-                    onClick={() => downloadPDF(
-                      `/reports/student-report/${s.id}`,
-                      `bao-cao-${s.full_name.replace(/\s+/g, '-')}.pdf`,
-                      s.id
-                    )}
+                    onClick={() => {
+                      const query = `hideSummary=${reportOptions.hideSummary}&hideSubject=${reportOptions.hideSubject}&hideTime=${reportOptions.hideTime}&hideDuration=${reportOptions.hideDuration}&hidePrice=${reportOptions.hidePrice}&hideAmount=${reportOptions.hideAmount}&hideStatus=${reportOptions.hideStatus}`;
+                      downloadPDF(
+                        `/reports/student-report/${s.id}?${query}`,
+                        `bao-cao-${s.full_name.replace(/\s+/g, '-')}.pdf`,
+                        s.id
+                      );
+                    }}
                   >
                     {downloading === s.id ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : <Download size={14} />}
                     PDF
