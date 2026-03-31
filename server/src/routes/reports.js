@@ -166,6 +166,9 @@ router.get('/salary-report', async (req, res) => {
     const sessions = sessionsResult.rows;
     const summary = summaryResult.rows[0];
 
+    const displayStart = formatDate(stDate);
+    const displayEnd = formatDate(edDate);
+
     const student = studentFilter ? sessions[0]?.student_name : null;
     const titleText = student ? `BẢNG LƯƠNG HS: ${student.toUpperCase()}` : '';
 
