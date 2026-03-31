@@ -49,7 +49,8 @@ const createPDFBase = (res, filename) => {
   }
 
   res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  const safeFilename = encodeURIComponent(filename);
+  res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"; filename*=UTF-8''${safeFilename}`);
   doc.pipe(res);
   return doc;
 };
@@ -233,9 +234,6 @@ router.get('/salary-report', async (req, res) => {
     }
 
     // Footer
-    doc.fillColor('#999').font('Roboto').fontSize(8)
-      .text('', 40, doc.page.height - 40, { align: 'center', width: 515 }); // Remove footer text
-
     doc.end();
   } catch (error) {
     console.error('PDF salary error:', error);
@@ -278,7 +276,7 @@ router.get('/student-report/:studentId', async (req, res) => {
     const user = userResult.rows[0];
 
     const doc = createPDFBase(res, `hoc-sinh-${student.full_name.replace(/\s+/g, '-')}.pdf`);
-    let y = drawPDFHeader(doc, 'BÁO CÁO HỌC SINH', student.full_name, user);
+    let y = drawPDFHeader(doc, '', `Báo cáo học sinh: ${student.full_name}`);
 
     // Student info
     y += 10;
@@ -340,11 +338,6 @@ router.get('/student-report/:studentId', async (req, res) => {
         ], pWidths, 28, y, i % 2 === 0);
       });
     }
-
-    const pageHeight = doc.page.height;
-    doc.fillColor('#999').font('Roboto').fontSize(8)
-      .text('TutorPay - Hệ thống quản lý lương gia sư', 40, pageHeight - 40, { align: 'center', width: 515 });
-
     doc.end();
   } catch (error) {
     console.error('PDF student error:', error);
