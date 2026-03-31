@@ -20,6 +20,14 @@ export default function Reports() {
   });
   const [yearlyYear, setYearlyYear] = useState(now.getFullYear());
   const [downloading, setDownloading] = useState('');
+  
+  const [reportOptions, setReportOptions] = useState({
+    hideSummary: false,
+    hideSubject: false,
+    hideTime: false,
+    hideDuration: false,
+    hideStatus: false
+  });
 
   useEffect(() => {
     api.get('/students').then(r => setStudents(r.data.students)).catch(() => {});
@@ -79,15 +87,44 @@ export default function Reports() {
             <button
               className="btn btn-primary"
               disabled={downloading === 'salary'}
-              onClick={() => downloadPDF(
-                `/reports/salary-report?startDate=${startDate}&endDate=${endDate}`,
-                `bang-luong-${startDate}-den-${endDate}.pdf`,
-                'salary'
-              )}
+              onClick={() => {
+                const query = `startDate=${startDate}&endDate=${endDate}&hideSummary=${reportOptions.hideSummary}&hideSubject=${reportOptions.hideSubject}&hideTime=${reportOptions.hideTime}&hideDuration=${reportOptions.hideDuration}&hideStatus=${reportOptions.hideStatus}`;
+                downloadPDF(
+                  `/reports/salary-report?${query}`,
+                  `bang-luong-${startDate}-den-${endDate}.pdf`,
+                  'salary'
+                );
+              }}
             >
               {downloading === 'salary' ? <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> : <Download size={16} />}
               Xuất PDF Bảng Lương
             </button>
+          </div>
+          
+          <div style={{ marginTop: 24, padding: 16, background: 'var(--bg-input)', borderRadius: 12, border: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'white', marginBottom: 12 }}>Tuỳ chọn hiển thị khi in:</div>
+            <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
+                <input type="checkbox" checked={reportOptions.hideSummary} onChange={e => setReportOptions(r => ({...r, hideSummary: e.target.checked}))} />
+                <span style={{ color: reportOptions.hideSummary ? 'var(--text-dim)' : 'var(--text)' }}>Ẩn Khối Tổng kết</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
+                <input type="checkbox" checked={reportOptions.hideSubject} onChange={e => setReportOptions(r => ({...r, hideSubject: e.target.checked}))} />
+                <span style={{ color: reportOptions.hideSubject ? 'var(--text-dim)' : 'var(--text)' }}>Ẩn cột Môn</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
+                <input type="checkbox" checked={reportOptions.hideTime} onChange={e => setReportOptions(r => ({...r, hideTime: e.target.checked}))} />
+                <span style={{ color: reportOptions.hideTime ? 'var(--text-dim)' : 'var(--text)' }}>Ẩn Giờ Bắt đầu / Kết thúc</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
+                <input type="checkbox" checked={reportOptions.hideDuration} onChange={e => setReportOptions(r => ({...r, hideDuration: e.target.checked}))} />
+                <span style={{ color: reportOptions.hideDuration ? 'var(--text-dim)' : 'var(--text)' }}>Ẩn Số giờ</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
+                <input type="checkbox" checked={reportOptions.hideStatus} onChange={e => setReportOptions(r => ({...r, hideStatus: e.target.checked}))} />
+                <span style={{ color: reportOptions.hideStatus ? 'var(--text-dim)' : 'var(--text)' }}>Ẩn Trạng thái</span>
+              </label>
+            </div>
           </div>
 
           <div style={{ marginTop: 16, padding: '12px 16px', background: 'rgba(79,70,229,0.05)', borderRadius: 10, display: 'flex', gap: 20, flexWrap: 'wrap' }}>

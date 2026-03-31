@@ -29,6 +29,18 @@ const formatTime = (time) => {
 // Generic PDF setup
 const createPDFBase = (res, filename) => {
   const doc = new PDFDocument({ margin: 40, size: 'A4' });
+  const regularFontPath = path.join(__dirname, '../assets/fonts/Roboto-Regular.ttf');
+  const boldFontPath = path.join(__dirname, '../assets/fonts/Roboto-Bold.ttf');
+  
+  if (fs.existsSync(regularFontPath) && fs.existsSync(boldFontPath)) {
+    doc.registerFont('Roboto', regularFontPath);
+    doc.registerFont('Roboto-Bold', boldFontPath);
+  } else {
+    // Fallback if fonts somehow missing
+    doc.registerFont('Roboto', 'Helvetica');
+    doc.registerFont('Roboto-Bold', 'Helvetica-Bold');
+  }
+
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   doc.pipe(res);
@@ -38,13 +50,13 @@ const createPDFBase = (res, filename) => {
 // Draw table header
 const drawTableHeader = (doc, headers, colWidths, startX, y) => {
   doc.fillColor('#1a237e').rect(startX, y, colWidths.reduce((a, b) => a + b, 0), 22).fill();
-  doc.fillColor('white').font('Helvetica-Bold').fontSize(9);
+  doc.fillColor('white').font('Roboto-Bold').fontSize(9);
   let x = startX;
   headers.forEach((h, i) => {
     doc.text(h, x + 4, y + 7, { width: colWidths[i] - 8, align: 'left' });
     x += colWidths[i];
   });
-  doc.fillColor('black').font('Helvetica').fontSize(8);
+  doc.fillColor('black').font('Roboto').fontSize(8);
   return y + 22;
 };
 
@@ -57,7 +69,7 @@ const drawTableRow = (doc, cells, colWidths, startX, y, isEven) => {
   doc.fillColor('#222');
   let x = startX;
   cells.forEach((cell, i) => {
-    doc.font('Helvetica').fontSize(8).text(String(cell), x + 4, y + 6, { width: colWidths[i] - 8, align: 'left' });
+    doc.font('Roboto').fontSize(8).text(String(cell), x + 4, y + 6, { width: colWidths[i] - 8, align: 'left' });
     x += colWidths[i];
   });
 
@@ -80,18 +92,18 @@ const drawPDFHeader = (doc, title, subtitle, user) => {
   doc.fillColor('#1a237e').rect(0, 0, 595, 80).fill();
   
   doc.fillColor('white')
-    .font('Helvetica-Bold').fontSize(22)
+    .font('Roboto-Bold').fontSize(22)
     .text('TUTORPAY', 40, 15);
   
-  doc.font('Helvetica').fontSize(10)
+  doc.font('Roboto').fontSize(10)
     .text('Hệ thống quản lý lương gia sư', 40, 42);
 
-  doc.font('Helvetica-Bold').fontSize(16)
+  doc.font('Roboto-Bold').fontSize(16)
     .text(title, 200, 15, { align: 'right', width: 355 });
-  doc.font('Helvetica').fontSize(10)
+  doc.font('Roboto').fontSize(10)
     .text(subtitle, 200, 42, { align: 'right', width: 355 });
 
-  doc.fillColor('#333').font('Helvetica').fontSize(9)
+  doc.fillColor('#333').font('Roboto').fontSize(9)
     .text(`Gia sư: ${user.full_name} | Tài khoản: ${user.username}`, 40, 90)
     .text(`Ngày xuất: ${formatDate(new Date())}`, 40, 105);
 
@@ -103,7 +115,7 @@ const drawPDFHeader = (doc, title, subtitle, user) => {
 // Date range salary report PDF
 router.get('/salary-report', async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, hideSummary, hideSubject, hideTime, hideDuration, hideStatus } = req.query;
     
     // Default to current month if not provided
     const now = new Date();
@@ -145,22 +157,37 @@ router.get('/salary-report', async (req, res) => {
     let y = drawPDFHeader(doc, 'BẢNG LƯƠNG GIA SƯ', `Từ ${displayStart} đến ${displayEnd}`, user);
 
     // Summary box
-    y += 10;
-    doc.fillColor('#e8eaf6').roundedRect(40, y, 515, 65, 8).fill();
-    doc.fillColor('#1a237e').font('Helvetica-Bold').fontSize(10).text('TỔNG KẾT', 50, y + 10);
-    doc.fillColor('#333').font('Helvetica').fontSize(9)
-      .text(`Tổng số buổi dạy: ${summary?.total_sessions || 0}`, 50, y + 28)
-      .text(`Tổng giờ dạy: ${parseFloat(summary?.total_hours || 0).toFixed(2)} giờ`, 200, y + 28)
-      .text(`Tổng thu nhập: ${formatVND(summary?.total_amount || 0)}`, 380, y + 28);
-    y += 80;
+    if (hideSummary !== 'true') {
+      y += 10;
+      doc.fillColor('#e8eaf6').roundedRect(40, y, 515, 65, 8).fill();
+      doc.fillColor('#1a237e').font('Roboto-Bold').fontSize(10).text('TỔNG KẾT', 50, y + 10);
+      doc.fillColor('#333').font('Roboto').fontSize(9)
+        .text(`Tổng số buổi dạy: ${summary?.total_sessions || 0}`, 50, y + 28)
+        .text(`Tổng giờ dạy: ${parseFloat(summary?.total_hours || 0).toFixed(2)} giờ`, 200, y + 28)
+        .text(`Tổng thu nhập: ${formatVND(summary?.total_amount || 0)}`, 380, y + 28);
+      y += 80;
+    } else {
+      y += 20;
+    }
 
     // Table
     if (sessions.length === 0) {
-      doc.fillColor('#999').fontSize(12).text('Không có buổi dạy nào trong tháng này.', 40, y + 20, { align: 'center' });
+      doc.fillColor('#999').fontSize(12).text('Không có buổi dạy nào.', 40, y + 20, { align: 'center' });
     } else {
-      const headers = ['Ngày', 'Học sinh', 'Môn', 'Bắt đầu', 'Kết thúc', 'Giờ', 'Đơn giá', 'Thành tiền', 'TT'];
-      const colWidths = [65, 95, 55, 45, 45, 35, 70, 80, 35];
-      const startX = 28;
+      const headers = ['Ngày', 'Học sinh'];
+      const colWidths = [65, 95];
+      
+      if (hideSubject !== 'true') { headers.push('Môn'); colWidths.push(55); }
+      if (hideTime !== 'true') { headers.push('Bắt đầu', 'Kết thúc'); colWidths.push(45, 45); }
+      if (hideDuration !== 'true') { headers.push('Giờ'); colWidths.push(35); }
+      
+      headers.push('Đơn giá', 'Thành tiền');
+      colWidths.push(70, 80);
+      
+      if (hideStatus !== 'true') { headers.push('TT'); colWidths.push(35); }
+
+      const totalWidth = colWidths.reduce((a, b) => a + b, 0);
+      const startX = (595 - totalWidth) / 2;
 
       y = drawTableHeader(doc, headers, colWidths, startX, y);
       sessions.forEach((sess, i) => {
@@ -174,29 +201,33 @@ router.get('/salary-report', async (req, res) => {
           ? `${formatVND(sess.rate_per_hour)}/h` 
           : `${formatVND(sess.rate_per_session)}/buổi`;
 
-        y = drawTableRow(doc, [
+        let rowData = [
           formatDate(sess.session_date),
-          sess.student_name || 'N/A',
-          sess.subject_name || 'N/A',
-          formatTime(sess.start_time),
-          formatTime(sess.end_time),
-          parseFloat(sess.duration_hours || 0).toFixed(1),
-          rateDisplay,
-          formatVND(sess.total_amount),
-          sess.status === 'completed' ? '✓' : sess.status === 'cancelled' ? '✗' : '~'
-        ], colWidths, startX, y, i % 2 === 0);
+          sess.student_name || 'N/A'
+        ];
+        
+        if (hideSubject !== 'true') rowData.push(sess.subject_name || 'N/A');
+        if (hideTime !== 'true') rowData.push(formatTime(sess.start_time), formatTime(sess.end_time));
+        if (hideDuration !== 'true') rowData.push(parseFloat(sess.duration_hours || 0).toFixed(1));
+        
+        rowData.push(rateDisplay, formatVND(sess.total_amount));
+        
+        if (hideStatus !== 'true') {
+          rowData.push(sess.status === 'completed' ? '✓' : sess.status === 'cancelled' ? '✗' : '~');
+        }
+
+        y = drawTableRow(doc, rowData, colWidths, startX, y, i % 2 === 0);
       });
 
       // Total row
       y += 5;
-      doc.fillColor('#1a237e').font('Helvetica-Bold').fontSize(10)
-        .text(`TỔNG CỘNG: ${formatVND(summary.total_amount)}`, 28, y, { align: 'right', width: 515 });
+      doc.fillColor('#1a237e').font('Roboto-Bold').fontSize(10)
+        .text(`TỔNG HỌC PHÍ: ${formatVND(summary?.total_amount || 0)}`, 28, y, { align: 'right', width: 515 });
     }
 
     // Footer
-    const pageHeight = doc.page.height;
-    doc.fillColor('#999').font('Helvetica').fontSize(8)
-      .text('TutorPay - Hệ thống quản lý lương gia sư | Tài liệu được tạo tự động', 40, pageHeight - 40, { align: 'center', width: 515 });
+    doc.fillColor('#999').font('Roboto').fontSize(8)
+      .text('TutorPay - Mọi thắc mắc xin liên hệ giáo viên trực tiếp.', 40, doc.page.height - 40, { align: 'center', width: 515 });
 
     doc.end();
   } catch (error) {
@@ -245,20 +276,19 @@ router.get('/student-report/:studentId', async (req, res) => {
     // Student info
     y += 10;
     doc.fillColor('#e8eaf6').roundedRect(40, y, 515, 80, 8).fill();
-    doc.fillColor('#1a237e').font('Helvetica-Bold').fontSize(10).text('THÔNG TIN HỌC SINH', 50, y + 8);
-    doc.fillColor('#333').font('Helvetica').fontSize(9)
+    doc.fillColor('#1a237e').font('Roboto-Bold').fontSize(10).text('THÔNG TIN HỌC SINH', 50, y + 8);
+    doc.fillColor('#333').font('Roboto').fontSize(9)
       .text(`Họ và tên: ${student.full_name}`, 50, y + 25)
       .text(`Lớp: ${student.grade || 'N/A'}`, 250, y + 25)
       .text(`Phụ huynh: ${student.parent_name || 'N/A'}`, 50, y + 42)
       .text(`SĐT: ${student.parent_phone || 'N/A'}`, 250, y + 42)
       .text(`Tổng học phí: ${formatVND(totalOwe)}`, 50, y + 59)
       .text(`Đã thanh toán: ${formatVND(totalPaid)}`, 220, y + 59)
-      .text(`Còn nợ: ${formatVND(balance)}`, 400, y + 59);
+      .text(`CÒN NỢ: ${formatVND(balance)}`, 390, y + 59);
     y += 100;
-
-    // Sessions table
-    doc.fillColor('#1a237e').font('Helvetica-Bold').fontSize(11).text('LỊCH SỬ BUỔI DẠY', 40, y);
-    y += 15;
+    
+    doc.fillColor('#1a237e').font('Roboto-Bold').fontSize(12).text('CHI TIẾT BUỔI HỌC', 40, y);
+    y += 20;
 
     if (sessions.length > 0) {
       const headers = ['Ngày', 'Môn học', 'Giờ bắt đầu', 'Giờ kết thúc', 'Số giờ', 'Đơn giá', 'Thành tiền', 'Trạng thái'];
@@ -288,7 +318,7 @@ router.get('/student-report/:studentId', async (req, res) => {
     // Payments table
     if (payments.length > 0) {
       if (y > 650) { doc.addPage(); y = 30; }
-      doc.fillColor('#1a237e').font('Helvetica-Bold').fontSize(11).text('LỊCH SỬ THANH TOÁN', 40, y);
+      doc.fillColor('#1a237e').font('Roboto-Bold').fontSize(11).text('LỊCH SỬ THANH TOÁN', 40, y);
       y += 15;
       const pHeaders = ['Ngày', 'Số tiền', 'Phương thức', 'Mã tham chiếu', 'Ghi chú'];
       const pWidths = [80, 110, 100, 110, 145];
@@ -305,7 +335,7 @@ router.get('/student-report/:studentId', async (req, res) => {
     }
 
     const pageHeight = doc.page.height;
-    doc.fillColor('#999').font('Helvetica').fontSize(8)
+    doc.fillColor('#999').font('Roboto').fontSize(8)
       .text('TutorPay - Hệ thống quản lý lương gia sư', 40, pageHeight - 40, { align: 'center', width: 515 });
 
     doc.end();
@@ -357,16 +387,15 @@ router.get('/yearly-report/:year', async (req, res) => {
     y += 10;
     const total = totalResult.rows[0];
     doc.fillColor('#e8eaf6').roundedRect(40, y, 515, 65, 8).fill();
-    doc.fillColor('#1a237e').font('Helvetica-Bold').fontSize(12).text(`TỔNG KẾT NĂM ${year}`, 50, y + 8);
-    doc.fillColor('#333').font('Helvetica').fontSize(10)
-      .text(`Tổng số buổi: ${total.sessions || 0}`, 50, y + 28)
-      .text(`Tổng số giờ: ${parseFloat(total.hours || 0).toFixed(2)}h`, 200, y + 28)
-      .text(`Tổng thu nhập: ${formatVND(total.amount || 0)}`, 360, y + 28);
-    y += 80;
+    doc.fillColor('#1a237e').font('Roboto-Bold').fontSize(12).text(`TỔNG KẾT NĂM ${year}`, 50, y + 8);
+    doc.fillColor('#222').font('Roboto');
+    if (stats.most_active_student) doc.text(`- Học sinh tích cực nhất: ${stats.most_active_student} (${stats.most_active_student_sessions} buổi)`, 40, y + 15);
+    if (stats.best_subject) doc.text(`- Môn học phổ biến nhất: ${stats.best_subject} (${stats.best_subject_sessions} buổi)`, 40, y + 30);
+    doc.text(`- Tỉ lệ hoàn thành lớp học: ${Math.round(totalSessions ? (completedCount / totalSessions * 100) : 0)}%`, 40, y + 45);
+    y += 75;
 
-    // Monthly breakdown
-    doc.fillColor('#1a237e').font('Helvetica-Bold').fontSize(11).text('THỐNG KÊ THEO THÁNG', 40, y);
-    y += 15;
+    doc.fillColor('#1a237e').font('Roboto-Bold').fontSize(12).text('QUY CHUẨN THÁNG', 40, y);
+    y += 20;
 
     const mHeaders = ['Tháng', 'Số buổi dạy', 'Số giờ', 'Doanh thu'];
     const mWidths = [100, 130, 120, 165];

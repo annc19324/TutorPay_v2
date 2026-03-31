@@ -56,7 +56,7 @@ export default function TimeSlots() {
       ]);
       setSlots(resSlots.data.time_slots || []);
       setStudents(resSt.data.students || []);
-      setSubjects(resSub.data.settings?.subjects || []);
+      setSubjects(resSub.data.subjects || []);
     } catch (error) {
       toast.error('Lỗi tải dữ liệu khung giờ');
     } finally {
