@@ -125,7 +125,6 @@ export default function TimeSlots() {
   };
 
   const deleteSlot = async (id) => {
-    if (!window.confirm('Bạn có chắc muốn xóa khung giờ này?')) return;
     try {
       await api.delete(`/timeslots/${id}`);
       toast.success('Đã xóa!');
@@ -263,7 +262,7 @@ export default function TimeSlots() {
                     <label className="form-label">Môn học</label>
                     <select className="form-control" value={form.subject_id} onChange={e => setForm({...form, subject_id: e.target.value})}>
                       <option value="">-- Chọn Môn --</option>
-                      {subjects.filter(s => s.is_active).map(s => (
+                      {subjects.map(s => (
                         <option key={s.id} value={s.id}>{s.name}</option>
                       ))}
                     </select>

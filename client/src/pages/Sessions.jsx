@@ -106,7 +106,6 @@ export default function Sessions() {
   };
 
   const remove = async (id) => {
-    if (!window.confirm('Xóa buổi dạy này?')) return;
     try { await api.delete(`/sessions/${id}`); toast.success('Đã xóa!'); load(); }
     catch { toast.error('Lỗi xóa'); }
   };
