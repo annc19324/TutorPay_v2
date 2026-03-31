@@ -26,6 +26,8 @@ export default function Reports() {
     hideSubject: false,
     hideTime: false,
     hideDuration: false,
+    hidePrice: false,
+    hideAmount: false,
     hideStatus: false
   });
 
@@ -88,7 +90,7 @@ export default function Reports() {
               className="btn btn-primary"
               disabled={downloading === 'salary'}
               onClick={() => {
-                const query = `startDate=${startDate}&endDate=${endDate}&hideSummary=${reportOptions.hideSummary}&hideSubject=${reportOptions.hideSubject}&hideTime=${reportOptions.hideTime}&hideDuration=${reportOptions.hideDuration}&hideStatus=${reportOptions.hideStatus}`;
+                const query = `startDate=${startDate}&endDate=${endDate}&hideSummary=${reportOptions.hideSummary}&hideSubject=${reportOptions.hideSubject}&hideTime=${reportOptions.hideTime}&hideDuration=${reportOptions.hideDuration}&hidePrice=${reportOptions.hidePrice}&hideAmount=${reportOptions.hideAmount}&hideStatus=${reportOptions.hideStatus}`;
                 downloadPDF(
                   `/reports/salary-report?${query}`,
                   `bang-luong-${startDate}-den-${endDate}.pdf`,
@@ -119,6 +121,14 @@ export default function Reports() {
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
                 <input type="checkbox" checked={reportOptions.hideDuration} onChange={e => setReportOptions(r => ({...r, hideDuration: e.target.checked}))} />
                 <span style={{ color: reportOptions.hideDuration ? 'var(--text-dim)' : 'var(--text)' }}>Ẩn Số giờ</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
+                <input type="checkbox" checked={reportOptions.hidePrice} onChange={e => setReportOptions(r => ({...r, hidePrice: e.target.checked}))} />
+                <span style={{ color: reportOptions.hidePrice ? 'var(--text-dim)' : 'var(--text)' }}>Ẩn Đơn giá</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
+                <input type="checkbox" checked={reportOptions.hideAmount} onChange={e => setReportOptions(r => ({...r, hideAmount: e.target.checked}))} />
+                <span style={{ color: reportOptions.hideAmount ? 'var(--text-dim)' : 'var(--text)' }}>Ẩn Học phí (Thành tiền)</span>
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
                 <input type="checkbox" checked={reportOptions.hideStatus} onChange={e => setReportOptions(r => ({...r, hideStatus: e.target.checked}))} />

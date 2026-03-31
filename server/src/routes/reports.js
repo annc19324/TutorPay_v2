@@ -87,7 +87,7 @@ const drawTableRow = (doc, cells, colWidths, startX, y, isEven) => {
 };
 
 // PDF Header
-const drawPDFHeader = (doc, title, subtitle, user) => {
+const drawPDFHeader = (doc, title, subtitle) => {
   // Header bar
   doc.fillColor('#1a237e').rect(0, 0, 595, 80).fill();
   
@@ -95,27 +95,27 @@ const drawPDFHeader = (doc, title, subtitle, user) => {
     .font('Roboto-Bold').fontSize(22)
     .text('TUTORPAY', 40, 15);
   
-  doc.font('Roboto').fontSize(10)
-    .text('Hệ thống quản lý lương gia sư', 40, 42);
-
-  doc.font('Roboto-Bold').fontSize(16)
-    .text(title, 200, 15, { align: 'right', width: 355 });
-  doc.font('Roboto').fontSize(10)
-    .text(subtitle, 200, 42, { align: 'right', width: 355 });
+  if (title) {
+    doc.font('Roboto-Bold').fontSize(16)
+      .text(title, 200, 15, { align: 'right', width: 355 });
+  }
+  if (subtitle) {
+    doc.font('Roboto').fontSize(10)
+      .text(subtitle, 200, 42, { align: 'right', width: 355 });
+  }
 
   doc.fillColor('#333').font('Roboto').fontSize(9)
-    .text(`Gia sư: ${user.full_name} | Tài khoản: ${user.username}`, 40, 90)
-    .text(`Ngày xuất: ${formatDate(new Date())}`, 40, 105);
+    .text(`Ngày xuất: ${formatDate(new Date())}`, 40, 90);
 
-  doc.moveTo(40, 120).lineTo(555, 120).strokeColor('#1a237e').lineWidth(2).stroke();
+  doc.moveTo(40, 110).lineTo(555, 110).strokeColor('#1a237e').lineWidth(2).stroke();
   
-  return 130;
+  return 120;
 };
 
 // Date range salary report PDF
 router.get('/salary-report', async (req, res) => {
   try {
-    const { startDate, endDate, hideSummary, hideSubject, hideTime, hideDuration, hideStatus } = req.query;
+    const { startDate, endDate, hideSummary, hideSubject, hideTime, hideDuration, hideStatus, hidePrice, hideAmount } = req.query;
     
     // Default to current month if not provided
     const now = new Date();
@@ -154,7 +154,7 @@ router.get('/salary-report', async (req, res) => {
     const displayEnd = formatDate(edDate);
 
     const doc = createPDFBase(res, `bang-luong-${stDate}-to-${edDate}.pdf`);
-    let y = drawPDFHeader(doc, 'BẢNG LƯƠNG GIA SƯ', `Từ ${displayStart} đến ${displayEnd}`, user);
+    let y = drawPDFHeader(doc, '', `Ngày bắt đầu: ${displayStart} - Ngày kết thúc: ${displayEnd}`);
 
     // Summary box
     if (hideSummary !== 'true') {
@@ -174,15 +174,14 @@ router.get('/salary-report', async (req, res) => {
     if (sessions.length === 0) {
       doc.fillColor('#999').fontSize(12).text('Không có buổi dạy nào.', 40, y + 20, { align: 'center' });
     } else {
-      const headers = ['Ngày', 'Học sinh'];
+      const headers = ['Ngày', 'HS'];
       const colWidths = [65, 95];
       
       if (hideSubject !== 'true') { headers.push('Môn'); colWidths.push(55); }
       if (hideTime !== 'true') { headers.push('Bắt đầu', 'Kết thúc'); colWidths.push(45, 45); }
       if (hideDuration !== 'true') { headers.push('Giờ'); colWidths.push(35); }
-      
-      headers.push('Đơn giá', 'Thành tiền');
-      colWidths.push(70, 80);
+      if (hidePrice !== 'true') { headers.push('Đơn giá'); colWidths.push(70); }
+      if (hideAmount !== 'true') { headers.push('Học phí'); colWidths.push(80); }
       
       if (hideStatus !== 'true') { headers.push('TT'); colWidths.push(35); }
 
@@ -209,8 +208,8 @@ router.get('/salary-report', async (req, res) => {
         if (hideSubject !== 'true') rowData.push(sess.subject_name || 'N/A');
         if (hideTime !== 'true') rowData.push(formatTime(sess.start_time), formatTime(sess.end_time));
         if (hideDuration !== 'true') rowData.push(parseFloat(sess.duration_hours || 0).toFixed(1));
-        
-        rowData.push(rateDisplay, formatVND(sess.total_amount));
+        if (hidePrice !== 'true') rowData.push(rateDisplay);
+        if (hideAmount !== 'true') rowData.push(formatVND(sess.total_amount));
         
         if (hideStatus !== 'true') {
           rowData.push(sess.status === 'completed' ? '✓' : sess.status === 'cancelled' ? '✗' : '~');
@@ -222,12 +221,12 @@ router.get('/salary-report', async (req, res) => {
       // Total row
       y += 5;
       doc.fillColor('#1a237e').font('Roboto-Bold').fontSize(10)
-        .text(`TỔNG HỌC PHÍ: ${formatVND(summary?.total_amount || 0)}`, 28, y, { align: 'right', width: 515 });
+        .text(`TỔNG: ${formatVND(summary?.total_amount || 0)}`, 28, y, { align: 'right', width: 515 });
     }
 
     // Footer
     doc.fillColor('#999').font('Roboto').fontSize(8)
-      .text('TutorPay - Mọi thắc mắc xin liên hệ giáo viên trực tiếp.', 40, doc.page.height - 40, { align: 'center', width: 515 });
+      .text('', 40, doc.page.height - 40, { align: 'center', width: 515 }); // Remove footer text
 
     doc.end();
   } catch (error) {

@@ -240,15 +240,15 @@ export default function TimeSlots() {
       </div>
 
       {showModal && (
-        <div className="modal-backdrop">
-          <div className="modal" style={{ maxWidth: 600 }}>
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowModal(false)}>
+          <div className="modal modal-lg">
             <div className="modal-header">
-              <h3>{editingSlot ? 'Chỉnh Sửa Khung Giờ' : 'Thêm Khung Giờ'}</h3>
-              <button className="btn btn-icon" onClick={() => setShowModal(false)}>✕</button>
+              <h3 className="modal-title">{editingSlot ? '✏️ Chỉnh Sửa Khung Giờ' : '➕ Thêm Khung Giờ'}</h3>
+              <button className="btn btn-icon btn-secondary" onClick={() => setShowModal(false)}>✕</button>
             </div>
             <form onSubmit={saveSlot}>
-              <div className="modal-body" style={{ display: 'grid', gap: 16 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className="modal-body">
+                <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Học sinh</label>
                     <select className="form-control" value={form.student_id} onChange={e => setForm({...form, student_id: e.target.value})}>
@@ -269,7 +269,7 @@ export default function TimeSlots() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+                <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Ngày trong tuần</label>
                     <select className="form-control" value={form.day_of_week} onChange={e => setForm({...form, day_of_week: e.target.value})}>
@@ -319,7 +319,7 @@ export default function TimeSlots() {
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Hủy</button>
-                <button type="submit" className="btn btn-primary">Lưu Khung Giờ</button>
+                <button type="submit" className="btn btn-primary">{editingSlot ? '💾 Cập nhật' : '➕ Thêm mới'}</button>
               </div>
             </form>
           </div>
@@ -327,25 +327,25 @@ export default function TimeSlots() {
       )}
 
       {showGenModal && (
-        <div className="modal-backdrop">
-          <div className="modal" style={{ maxWidth: 600 }}>
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowGenModal(false)}>
+          <div className="modal modal-lg">
             <div className="modal-header">
-              <h3>⚡ Tạo Nhanh Buổi Dạy Từ Khung Giờ</h3>
-              <button className="btn btn-icon" onClick={() => setShowGenModal(false)}>✕</button>
+              <h3 className="modal-title">⚡ Tạo Nhanh Buổi Dạy Từ Khung Giờ</h3>
+              <button className="btn btn-icon btn-secondary" onClick={() => setShowGenModal(false)}>✕</button>
             </div>
             <form onSubmit={generateSessions}>
-              <div className="modal-body" style={{ display: 'grid', gap: 16 }}>
+              <div className="modal-body">
                 <div style={{ background: 'rgba(56, 189, 248, 0.1)', padding: 12, borderRadius: 8, color: '#38bdf8', fontSize: 13 }}>
                   Hệ thống sẽ quét trong khoảng thời gian bên dưới và tự động tạo các buổi dạy cho những khung giờ bạn chọn.
                 </div>
                 
-                <div style={{ display: 'flex', gap: 16 }}>
-                  <div className="form-group" style={{ flex: 1 }}>
+                <div className="form-row">
+                  <div className="form-group">
                     <label className="form-label">Từ ngày</label>
                     <input type="date" className="form-control" required
                            value={genForm.from_date} onChange={e => setGenForm({...genForm, from_date: e.target.value})} />
                   </div>
-                  <div className="form-group" style={{ flex: 1 }}>
+                  <div className="form-group">
                     <label className="form-label">Đến ngày</label>
                     <input type="date" className="form-control" required
                            value={genForm.to_date} onChange={e => setGenForm({...genForm, to_date: e.target.value})} />
