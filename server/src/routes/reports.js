@@ -170,7 +170,7 @@ router.get('/salary-report', async (req, res) => {
     const displayEnd = formatDate(edDate);
 
     const student = studentFilter ? sessions[0]?.student_name : null;
-    const titleText = student ? `BẢNG LƯƠNG HS: ${student.toUpperCase()}` : '';
+    const titleText = student ? `HS: ${student.toUpperCase()}` : '';
 
     const doc = createPDFBase(res, `bang-luong${student ? '-' + student.replace(/\s+/g, '-') : ''}-${stDate}-to-${edDate}.pdf`);
     let y = drawPDFHeader(doc, titleText, `Ngày bắt đầu: ${displayStart} - Ngày kết thúc: ${displayEnd}`);
