@@ -20,6 +20,13 @@ const formatDate = (date) => {
   return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
 };
 
+// Helper: getting day of week
+const getDayOfWeek = (dateString) => {
+  if (!dateString) return '';
+  const days = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+  return days[new Date(dateString).getDay()];
+};
+
 // Helper: format time
 const formatTime = (time) => {
   if (!time) return '';
@@ -174,8 +181,8 @@ router.get('/salary-report', async (req, res) => {
     if (sessions.length === 0) {
       doc.fillColor('#999').fontSize(12).text('Không có buổi dạy nào.', 40, y + 20, { align: 'center' });
     } else {
-      const headers = ['Ngày', 'HS'];
-      const colWidths = [65, 95];
+      const headers = ['Thứ', 'Ngày', 'HS'];
+      const colWidths = [45, 65, 85];
       
       if (hideSubject !== 'true') { headers.push('Môn'); colWidths.push(55); }
       if (hideTime !== 'true') { headers.push('Bắt đầu', 'Kết thúc'); colWidths.push(45, 45); }
@@ -201,6 +208,7 @@ router.get('/salary-report', async (req, res) => {
           : `${formatVND(sess.rate_per_session)}/buổi`;
 
         let rowData = [
+          getDayOfWeek(sess.session_date),
           formatDate(sess.session_date),
           sess.student_name || 'N/A'
         ];

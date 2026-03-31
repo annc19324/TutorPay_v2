@@ -21,15 +21,25 @@ export default function Reports() {
   const [yearlyYear, setYearlyYear] = useState(now.getFullYear());
   const [downloading, setDownloading] = useState('');
   
-  const [reportOptions, setReportOptions] = useState({
-    hideSummary: false,
-    hideSubject: false,
-    hideTime: false,
-    hideDuration: false,
-    hidePrice: false,
-    hideAmount: false,
-    hideStatus: false
+  const [reportOptions, setReportOptions] = useState(() => {
+    try {
+      const saved = localStorage.getItem('tutorpay_pdf_options');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {
+      hideSummary: false,
+      hideSubject: false,
+      hideTime: false,
+      hideDuration: false,
+      hidePrice: false,
+      hideAmount: false,
+      hideStatus: false
+    };
   });
+
+  useEffect(() => {
+    localStorage.setItem('tutorpay_pdf_options', JSON.stringify(reportOptions));
+  }, [reportOptions]);
 
   useEffect(() => {
     api.get('/students').then(r => setStudents(r.data.students)).catch(() => {});
