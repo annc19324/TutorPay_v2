@@ -1,0 +1,194 @@
+const express = require('express');
+const pool = require('../db/connection');
+const { authenticateToken } = require('../middleware/auth');
+
+const router = express.Router();
+router.use(authenticateToken);
+
+// Get all sessions with filters
+router.get('/', async (req, res) => {
+  try {
+    const { month, year, student_id, subject_id, status, page = 1, limit = 50 } = req.query;
+    const offset = (page - 1) * limit;
+
+    let whereClause = 'WHERE sess.user_id = $1';
+    const params = [req.user.id];
+    let idx = 2;
+
+    if (month && year) {
+      whereClause += ` AND EXTRACT(MONTH FROM sess.session_date) = $${idx} AND EXTRACT(YEAR FROM sess.session_date) = $${idx+1}`;
+      params.push(month, year);
+      idx += 2;
+    } else if (year) {
+      whereClause += ` AND EXTRACT(YEAR FROM sess.session_date) = $${idx}`;
+      params.push(year);
+      idx++;
+    }
+    if (student_id) {
+      whereClause += ` AND sess.student_id = $${idx}`;
+      params.push(student_id);
+      idx++;
+    }
+    if (subject_id) {
+      whereClause += ` AND sess.subject_id = $${idx}`;
+      params.push(subject_id);
+      idx++;
+    }
+    if (status) {
+      whereClause += ` AND sess.status = $${idx}`;
+      params.push(status);
+      idx++;
+    }
+
+    const countResult = await pool.query(
+      `SELECT COUNT(*) FROM sessions sess ${whereClause}`, params
+    );
+
+    params.push(limit, offset);
+    const result = await pool.query(
+      `SELECT sess.*,
+              st.full_name as student_name,
+              sub.name as subject_name
+       FROM sessions sess
+       LEFT JOIN students st ON st.id = sess.student_id
+       LEFT JOIN subjects sub ON sub.id = sess.subject_id
+       ${whereClause}
+       ORDER BY sess.session_date DESC, sess.start_time DESC
+       LIMIT $${idx} OFFSET $${idx+1}`,
+      params
+    );
+
+    res.json({
+      sessions: result.rows,
+      total: parseInt(countResult.rows[0].count),
+      page: parseInt(page),
+      limit: parseInt(limit)
+    });
+  } catch (error) {
+    console.error('Get sessions error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Summary stats
+router.get('/stats', async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    let whereClause = "WHERE user_id = $1 AND status = 'completed'";
+    const params = [req.user.id];
+
+    if (month && year) {
+      whereClause += ` AND EXTRACT(MONTH FROM session_date) = $2 AND EXTRACT(YEAR FROM session_date) = $3`;
+      params.push(month, year);
+    } else if (year) {
+      whereClause += ` AND EXTRACT(YEAR FROM session_date) = $2`;
+      params.push(year);
+    }
+
+    const result = await pool.query(
+      `SELECT 
+        COUNT(*) as total_sessions,
+        COALESCE(SUM(duration_hours), 0) as total_hours,
+        COALESCE(SUM(total_amount), 0) as total_amount,
+        COALESCE(AVG(rate_per_hour), 0) as avg_rate
+       FROM sessions ${whereClause}`,
+      params
+    );
+
+    // By student
+    const byStudent = await pool.query(
+      `SELECT st.full_name as student_name, sess.student_id,
+              COUNT(*) as sessions,
+              SUM(duration_hours) as hours,
+              SUM(total_amount) as amount
+       FROM sessions sess
+       LEFT JOIN students st ON st.id = sess.student_id
+       ${whereClause}
+       GROUP BY sess.student_id, st.full_name
+       ORDER BY amount DESC`,
+      params
+    );
+
+    // Monthly breakdown (current year)
+    const monthly = await pool.query(
+      `SELECT EXTRACT(MONTH FROM session_date) as month,
+              COUNT(*) as sessions,
+              SUM(duration_hours) as hours,
+              SUM(total_amount) as amount
+       FROM sessions
+       WHERE user_id = $1 AND status = 'completed'
+         AND EXTRACT(YEAR FROM session_date) = $2
+       GROUP BY month
+       ORDER BY month`,
+      [req.user.id, year || new Date().getFullYear()]
+    );
+
+    res.json({
+      summary: result.rows[0],
+      byStudent: byStudent.rows,
+      monthly: monthly.rows
+    });
+  } catch (error) {
+    console.error('Stats error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Create session
+router.post('/', async (req, res) => {
+  try {
+    const { student_id, subject_id, session_date, start_time, end_time, rate_per_hour, status, notes } = req.body;
+
+    if (!session_date || !start_time || !end_time || !rate_per_hour) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    if (end_time <= start_time) {
+      return res.status(400).json({ message: 'End time must be after start time' });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO sessions (user_id, student_id, subject_id, session_date, start_time, end_time, rate_per_hour, status, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING *`,
+      [req.user.id, student_id || null, subject_id || null, session_date, start_time, end_time, rate_per_hour, status || 'completed', notes]
+    );
+
+    res.status(201).json({ session: result.rows[0] });
+  } catch (error) {
+    console.error('Create session error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update session
+router.put('/:id', async (req, res) => {
+  try {
+    const { student_id, subject_id, session_date, start_time, end_time, rate_per_hour, status, notes } = req.body;
+
+    const result = await pool.query(
+      `UPDATE sessions SET
+        student_id=$1, subject_id=$2, session_date=$3, start_time=$4, end_time=$5,
+        rate_per_hour=$6, status=$7, notes=$8, updated_at=NOW()
+       WHERE id=$9 AND user_id=$10
+       RETURNING *`,
+      [student_id, subject_id, session_date, start_time, end_time, rate_per_hour, status, notes, req.params.id, req.user.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Session not found' });
+    res.json({ session: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete session
+router.delete('/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM sessions WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
+    res.json({ message: 'Session deleted' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+module.exports = router;
