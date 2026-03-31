@@ -18,6 +18,7 @@ export default function Reports() {
     const d = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     return d.toISOString().split('T')[0];
   });
+  const [selectedStudentId, setSelectedStudentId] = useState('');
   const [yearlyYear, setYearlyYear] = useState(now.getFullYear());
   const [downloading, setDownloading] = useState('');
   
@@ -131,11 +132,19 @@ export default function Reports() {
             <div className="form-group" style={{ marginBottom: 0 }}>
               <input type="date" className="form-control" value={endDate} onChange={e => setEndDate(e.target.value)} />
             </div>
+            <div className="form-group" style={{ marginBottom: 0, minWidth: 160 }}>
+              <select className="form-control" value={selectedStudentId} onChange={e => setSelectedStudentId(e.target.value)}>
+                <option value="">-- Tất cả học sinh --</option>
+                {students.map(s => (
+                  <option key={s.id} value={s.id}>{s.full_name}</option>
+                ))}
+              </select>
+            </div>
             <button
               className="btn btn-primary"
               disabled={downloading === 'salary'}
               onClick={() => {
-                const query = `startDate=${startDate}&endDate=${endDate}&hideSummary=${reportOptions.hideSummary}&hideSubject=${reportOptions.hideSubject}&hideTime=${reportOptions.hideTime}&hideDuration=${reportOptions.hideDuration}&hidePrice=${reportOptions.hidePrice}&hideAmount=${reportOptions.hideAmount}&hideStatus=${reportOptions.hideStatus}`;
+                const query = `startDate=${startDate}&endDate=${endDate}&studentId=${selectedStudentId}&hideSummary=${reportOptions.hideSummary}&hideSubject=${reportOptions.hideSubject}&hideTime=${reportOptions.hideTime}&hideDuration=${reportOptions.hideDuration}&hidePrice=${reportOptions.hidePrice}&hideAmount=${reportOptions.hideAmount}&hideStatus=${reportOptions.hideStatus}`;
                 downloadPDF(
                   `/reports/salary-report?${query}`,
                   `bang-luong-${startDate}-den-${endDate}.pdf`,

@@ -23,8 +23,10 @@ const formatDate = (date) => {
 // Helper: getting day of week
 const getDayOfWeek = (dateString) => {
   if (!dateString) return '';
+  const d = new Date(dateString);
+  if (isNaN(d.getTime())) return '-';
   const days = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
-  return days[new Date(dateString).getDay()];
+  return days[d.getDay()];
 };
 
 // Helper: format time
@@ -123,12 +125,14 @@ const drawPDFHeader = (doc, title, subtitle) => {
 // Date range salary report PDF
 router.get('/salary-report', async (req, res) => {
   try {
-    const { startDate, endDate, hideSummary, hideSubject, hideTime, hideDuration, hideStatus, hidePrice, hideAmount } = req.query;
+    const { startDate, endDate, hideSummary, hideSubject, hideTime, hideDuration, hideStatus, hidePrice, hideAmount, studentId } = req.query;
     
     // Default to current month if not provided
     const now = new Date();
     const stDate = startDate || new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
     const edDate = endDate || new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+
+    const studentFilter = studentId && studentId !== '' ? studentId : null;
 
     const [userResult, sessionsResult, summaryResult] = await Promise.all([
       pool.query('SELECT * FROM users WHERE id=$1', [req.user.id]),
@@ -140,8 +144,9 @@ router.get('/salary-report', async (req, res) => {
          WHERE sess.user_id = $1
            AND sess.session_date >= $2
            AND sess.session_date <= $3
-         ORDER BY sess.session_date, sess.start_time`,
-        [req.user.id, stDate, edDate]
+           AND ($4::uuid IS NULL OR sess.student_id = $4)
+         ORDER BY sess.session_date ASC, sess.start_time ASC`,
+        [req.user.id, stDate, edDate, studentFilter]
       ),
       pool.query(
         `SELECT 
@@ -149,8 +154,11 @@ router.get('/salary-report', async (req, res) => {
           COALESCE(SUM(duration_hours), 0) as total_hours,
           COALESCE(SUM(total_amount) FILTER (WHERE status='completed'), 0) as total_amount
          FROM sessions
-         WHERE user_id=$1 AND session_date >= $2 AND session_date <= $3`,
-        [req.user.id, stDate, edDate]
+         WHERE user_id=$1 
+           AND session_date >= $2 
+           AND session_date <= $3
+           AND ($4::uuid IS NULL OR student_id = $4)`,
+        [req.user.id, stDate, edDate, studentFilter]
       )
     ]);
 
@@ -158,11 +166,11 @@ router.get('/salary-report', async (req, res) => {
     const sessions = sessionsResult.rows;
     const summary = summaryResult.rows[0];
 
-    const displayStart = formatDate(stDate);
-    const displayEnd = formatDate(edDate);
+    const student = studentFilter ? sessions[0]?.student_name : null;
+    const titleText = student ? `BẢNG LƯƠNG HS: ${student.toUpperCase()}` : '';
 
-    const doc = createPDFBase(res, `bang-luong-${stDate}-to-${edDate}.pdf`);
-    let y = drawPDFHeader(doc, '', `Ngày bắt đầu: ${displayStart} - Ngày kết thúc: ${displayEnd}`);
+    const doc = createPDFBase(res, `bang-luong${student ? '-' + student.replace(/\s+/g, '-') : ''}-${stDate}-to-${edDate}.pdf`);
+    let y = drawPDFHeader(doc, titleText, `Ngày bắt đầu: ${displayStart} - Ngày kết thúc: ${displayEnd}`);
 
     // Summary box
     if (hideSummary !== 'true') {
@@ -260,7 +268,7 @@ router.get('/student-report/:studentId', async (req, res) => {
       )
     ]);
     
-    const { hideSubject, hideTime, hideDuration, hideStatus, hidePrice, hideAmount } = req.query;
+    const { hideSummary, hideSubject, hideTime, hideDuration, hideStatus, hidePrice, hideAmount } = req.query;
 
     if (studentResult.rows.length === 0) {
       return res.status(404).json({ message: 'Student not found' });
