@@ -24,27 +24,46 @@ export default function Sessions() {
   const [year, setYear] = useState(now.getFullYear());
   const [studentFilter, setStudentFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [timeslots, setTimeslots] = useState([]);
   const [editing, setEditing] = useState(null);
   const [stats, setStats] = useState(null);
-  const emptyForm = {
-    student_id: '', subject_id: '', session_date: new Date().toISOString().split('T')[0],
-    start_time: '08:00', end_time: '10:00', rate_type: 'hourly', rate_per_hour: '', rate_per_session: '', status: 'completed', notes: ''
+
+  const getSavedRate = () => {
+    try {
+      const saved = localStorage.getItem('tutorpay_last_rate');
+      return saved ? JSON.parse(saved) : { type: 'hourly', hour: '', session: '' };
+    } catch {
+      return { type: 'hourly', hour: '', session: '' };
+    }
   };
-  const [form, setForm] = useState(emptyForm);
+
+  const getEmptyForm = () => {
+    const saved = getSavedRate();
+    return {
+      student_id: '', subject_id: '', session_date: new Date().toISOString().split('T')[0],
+      start_time: '08:00', end_time: '10:00', 
+      rate_type: saved.type, rate_per_hour: saved.hour, rate_per_session: saved.session, 
+      status: 'completed', notes: ''
+    };
+  };
+
+  const [form, setForm] = useState(getEmptyForm());
 
   const load = async () => {
     setLoading(true);
     try {
-      const [sessRes, statsRes, studRes, subRes] = await Promise.all([
+      const [sessRes, statsRes, studRes, subRes, tsRes] = await Promise.all([
         api.get(`/sessions?month=${month}&year=${year}${studentFilter ? `&student_id=${studentFilter}` : ''}&limit=200`),
         api.get(`/sessions/stats?month=${month}&year=${year}`),
         api.get('/students'),
-        api.get('/settings')
+        api.get('/settings'),
+        api.get('/timeslots')
       ]);
       setSessions(sessRes.data.sessions);
       setStats(statsRes.data.summary);
       setStudents(studRes.data.students);
       setSubjects(subRes.data.subjects);
+      setTimeslots(tsRes.data.time_slots || []);
     } catch (e) { toast.error('Lỗi tải dữ liệu'); }
     finally { setLoading(false); }
   };
@@ -57,13 +76,18 @@ export default function Sessions() {
       student_id: s.student_id || '', subject_id: s.subject_id || '',
       session_date: s.session_date?.split('T')[0] || '', start_time: s.start_time?.substring(0, 5) || '',
       end_time: s.end_time?.substring(0, 5) || '', rate_type: s.rate_type || 'hourly', rate_per_hour: s.rate_per_hour || '', rate_per_session: s.rate_per_session || '', status: s.status, notes: s.notes || ''
-    } : emptyForm);
+    } : getEmptyForm());
     setShowModal(true);
   };
 
   const save = async (e) => {
     e.preventDefault();
     if (form.end_time <= form.start_time) { toast.error('Giờ kết thúc phải sau giờ bắt đầu'); return; }
+    
+    localStorage.setItem('tutorpay_last_rate', JSON.stringify({
+      type: form.rate_type, hour: form.rate_per_hour, session: form.rate_per_session
+    }));
+
     const payload = { ...form };
     if (payload.rate_type === 'hourly') payload.rate_per_session = null;
     else payload.rate_per_hour = null;
@@ -82,9 +106,26 @@ export default function Sessions() {
   };
 
   const remove = async (id) => {
-    if (!confirm('Xóa buổi dạy này?')) return;
+    if (!window.confirm('Xóa buổi dạy này?')) return;
     try { await api.delete(`/sessions/${id}`); toast.success('Đã xóa!'); load(); }
     catch { toast.error('Lỗi xóa'); }
+  };
+
+  const handleSlotSelect = (e) => {
+    const slotId = e.target.value;
+    if (!slotId) return;
+    const slot = timeslots.find(s => s.id === slotId);
+    if (!slot) return;
+    setForm(f => ({
+      ...f,
+      student_id: slot.student_id || '',
+      subject_id: slot.subject_id || '',
+      start_time: slot.start_time.substring(0, 5),
+      end_time: slot.end_time.substring(0, 5),
+      rate_type: slot.rate_type || 'hourly',
+      rate_per_hour: slot.rate_per_hour || '',
+      rate_per_session: slot.rate_per_session || ''
+    }));
   };
 
   const calcHours = (start, end) => {
@@ -210,6 +251,19 @@ export default function Sessions() {
             </div>
             <form onSubmit={save}>
               <div className="modal-body">
+                {!editing && timeslots.length > 0 && (
+                  <div className="form-group" style={{ background: 'var(--bg-input)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
+                    <label className="form-label">Tự động điền từ Khung Giờ</label>
+                    <select className="form-control" onChange={handleSlotSelect} defaultValue="">
+                      <option value="">-- Chọn một khung giờ đã lưu --</option>
+                      {timeslots.filter(s => s.is_active).map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.student_name} - {s.subject_name || 'N/A'} ({s.start_time.substring(0,5)} - {s.end_time.substring(0,5)})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Học sinh</label>

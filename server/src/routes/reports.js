@@ -149,16 +149,16 @@ router.get('/salary-report', async (req, res) => {
     doc.fillColor('#e8eaf6').roundedRect(40, y, 515, 65, 8).fill();
     doc.fillColor('#1a237e').font('Helvetica-Bold').fontSize(10).text('TỔNG KẾT', 50, y + 10);
     doc.fillColor('#333').font('Helvetica').fontSize(9)
-      .text(`Tổng số buổi dạy: ${summary.total_sessions}`, 50, y + 28)
-      .text(`Tổng giờ dạy: ${parseFloat(summary.total_hours).toFixed(2)} giờ`, 200, y + 28)
-      .text(`Tổng thu nhập: ${formatVND(summary.total_amount)}`, 380, y + 28);
+      .text(`Tổng số buổi dạy: ${summary?.total_sessions || 0}`, 50, y + 28)
+      .text(`Tổng giờ dạy: ${parseFloat(summary?.total_hours || 0).toFixed(2)} giờ`, 200, y + 28)
+      .text(`Tổng thu nhập: ${formatVND(summary?.total_amount || 0)}`, 380, y + 28);
     y += 80;
 
     // Table
     if (sessions.length === 0) {
       doc.fillColor('#999').fontSize(12).text('Không có buổi dạy nào trong tháng này.', 40, y + 20, { align: 'center' });
     } else {
-      const headers = ['Ngày', 'Học sinh', 'Môn', 'Bắt đầu', 'Kết thúc', 'Giờ', 'Đơn giá/h', 'Thành tiền', 'TT'];
+      const headers = ['Ngày', 'Học sinh', 'Môn', 'Bắt đầu', 'Kết thúc', 'Giờ', 'Đơn giá', 'Thành tiền', 'TT'];
       const colWidths = [65, 95, 55, 45, 45, 35, 70, 80, 35];
       const startX = 28;
 
@@ -169,14 +169,19 @@ router.get('/salary-report', async (req, res) => {
           y = 30;
           y = drawTableHeader(doc, headers, colWidths, startX, y);
         }
+        
+        const rateDisplay = sess.rate_type === 'hourly' 
+          ? `${formatVND(sess.rate_per_hour)}/h` 
+          : `${formatVND(sess.rate_per_session)}/buổi`;
+
         y = drawTableRow(doc, [
           formatDate(sess.session_date),
           sess.student_name || 'N/A',
           sess.subject_name || 'N/A',
           formatTime(sess.start_time),
           formatTime(sess.end_time),
-          parseFloat(sess.duration_hours).toFixed(1),
-          formatVND(sess.rate_per_hour),
+          parseFloat(sess.duration_hours || 0).toFixed(1),
+          rateDisplay,
           formatVND(sess.total_amount),
           sess.status === 'completed' ? '✓' : sess.status === 'cancelled' ? '✗' : '~'
         ], colWidths, startX, y, i % 2 === 0);
@@ -261,13 +266,18 @@ router.get('/student-report/:studentId', async (req, res) => {
       y = drawTableHeader(doc, headers, colWidths, 28, y);
       sessions.forEach((sess, i) => {
         if (y > 750) { doc.addPage(); y = 30; y = drawTableHeader(doc, headers, colWidths, 28, y); }
+        
+        const rateDisplay = sess.rate_type === 'hourly' 
+          ? formatVND(sess.rate_per_hour)
+          : formatVND(sess.rate_per_session);
+
         y = drawTableRow(doc, [
           formatDate(sess.session_date),
           sess.subject_name || 'N/A',
           formatTime(sess.start_time),
           formatTime(sess.end_time),
-          parseFloat(sess.duration_hours).toFixed(1),
-          formatVND(sess.rate_per_hour),
+          parseFloat(sess.duration_hours || 0).toFixed(1),
+          rateDisplay,
           formatVND(sess.total_amount),
           sess.status === 'completed' ? 'Hoàn thành' : sess.status === 'cancelled' ? 'Hủy' : 'Chờ'
         ], colWidths, 28, y, i % 2 === 0);
@@ -370,7 +380,7 @@ router.get('/yearly-report/:year', async (req, res) => {
       y = drawTableRow(doc, [
         monthNames[m],
         d ? d.sessions : '-',
-        d ? parseFloat(d.hours).toFixed(2) : '-',
+        d ? parseFloat(d.hours || 0).toFixed(2) : '-',
         d ? formatVND(d.amount) : '-'
       ], mWidths, 55, y, m % 2 === 0);
     }

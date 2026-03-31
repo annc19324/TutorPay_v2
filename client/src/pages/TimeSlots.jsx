@@ -15,12 +15,26 @@ export default function TimeSlots() {
   const [showGenModal, setShowGenModal] = useState(false);
   const [editingSlot, setEditingSlot] = useState(null);
 
-  const [form, setForm] = useState({
-    student_id: '', subject_id: '', day_of_week: '0',
-    start_time: '', end_time: '',
-    rate_type: 'hourly', rate_per_hour: '', rate_per_session: '',
-    label: '', notes: '', is_active: true
-  });
+  const getSavedRate = () => {
+    try {
+      const saved = localStorage.getItem('tutorpay_last_rate');
+      return saved ? JSON.parse(saved) : { type: 'hourly', hour: '', session: '' };
+    } catch {
+      return { type: 'hourly', hour: '', session: '' };
+    }
+  };
+
+  const getEmptyForm = () => {
+    const saved = getSavedRate();
+    return {
+      student_id: '', subject_id: '', day_of_week: '0',
+      start_time: '', end_time: '',
+      rate_type: saved.type, rate_per_hour: saved.hour, rate_per_session: saved.session,
+      label: '', notes: '', is_active: true
+    };
+  };
+
+  const [form, setForm] = useState(getEmptyForm());
 
   const [genForm, setGenForm] = useState({
     from_date: new Date().toISOString().split('T')[0],
@@ -67,11 +81,12 @@ export default function TimeSlots() {
       });
     } else {
       setEditingSlot(null);
+      const saved = getSavedRate();
       setForm({
         student_id: students[0]?.id || '',
         subject_id: subjects[0]?.id || '',
         day_of_week: '0', start_time: '18:00', end_time: '20:00',
-        rate_type: 'hourly', rate_per_hour: '', rate_per_session: '',
+        rate_type: saved.type, rate_per_hour: saved.hour, rate_per_session: saved.session,
         label: '', notes: '', is_active: true
       });
     }
@@ -80,6 +95,11 @@ export default function TimeSlots() {
 
   const saveSlot = async (e) => {
     e.preventDefault();
+
+    localStorage.setItem('tutorpay_last_rate', JSON.stringify({
+      type: form.rate_type, hour: form.rate_per_hour, session: form.rate_per_session
+    }));
+
     try {
       const payload = {
         ...form,
