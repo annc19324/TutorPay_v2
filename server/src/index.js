@@ -7,6 +7,11 @@ const rateLimit = require('express-rate-limit');
 
 const app = express();
 
+// Root route
+app.get('/', (req, res) => {
+  res.send('🚀 TutorPay API is running! Access the app at https://tutor-pay-v2.vercel.app');
+});
+
 // Security middleware
 app.use(helmet());
 app.use(morgan('combined'));
