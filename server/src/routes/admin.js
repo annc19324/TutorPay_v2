@@ -80,6 +80,10 @@ router.get('/users/:id', async (req, res) => {
 // Toggle user active status
 router.patch('/users/:id/toggle-status', async (req, res) => {
   try {
+    // Prevent admin from deactivating their own account
+    if (req.params.id === req.user.id) {
+      return res.status(400).json({ message: 'Không thể vô hiệu hóa tài khoản của chính mình' });
+    }
     const result = await pool.query(
       `UPDATE users SET is_active = NOT is_active, updated_at = NOW()
        WHERE id = $1 RETURNING id, username, is_active`,
@@ -130,6 +134,10 @@ router.patch('/users/:id/role', async (req, res) => {
     const { role } = req.body;
     if (!['admin', 'user'].includes(role)) {
       return res.status(400).json({ message: 'Invalid role' });
+    }
+    // Prevent admin from changing their own role
+    if (req.params.id === req.user.id && role !== 'admin') {
+      return res.status(400).json({ message: 'Không thể thay đổi vai trò của tài khoản đang đăng nhập' });
     }
     const result = await pool.query(
       `UPDATE users SET role = $1, updated_at = NOW() WHERE id = $2 RETURNING id, username, role`,

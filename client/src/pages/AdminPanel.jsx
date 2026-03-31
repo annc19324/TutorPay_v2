@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 import { Users, Shield, Search, ToggleLeft, ToggleRight, Key, Trash2, TrendingUp, Activity } from 'lucide-react';
 
 const formatDate = d => { if (!d) return ''; const dt = new Date(d); return `${dt.getDate().toString().padStart(2,'0')}/${(dt.getMonth()+1).toString().padStart(2,'0')}/${dt.getFullYear()}`; };
 const formatVND = n => n ? parseFloat(n).toLocaleString('vi-VN') : '0';
 
 export default function AdminPanel() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [stats, setStats] = useState(null);
   const [logs, setLogs] = useState([]);
@@ -185,12 +187,19 @@ export default function AdminPanel() {
                             </div>
                           </div>
                         </td>
-                        <td style={{ fontSize: 13, color: 'var(--text-dim)' }}>{u.email}</td>
+                        <td style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+                          {u.email}
+                          {u.id === currentUser?.id && (
+                            <span className="badge badge-warning" style={{ marginLeft: 8, fontSize: 10 }}>🙋 Bạn</span>
+                          )}
+                        </td>
                         <td>
                           <select
                             value={u.role}
                             onChange={e => changeRole(u.id, e.target.value)}
-                            style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', padding: '4px 8px', fontSize: 12, cursor: 'pointer' }}
+                            disabled={u.id === currentUser?.id}
+                            title={u.id === currentUser?.id ? 'Không thể thay đổi vai trò của chính mình' : ''}
+                            style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', padding: '4px 8px', fontSize: 12, cursor: u.id === currentUser?.id ? 'not-allowed' : 'pointer', opacity: u.id === currentUser?.id ? 0.5 : 1 }}
                           >
                             <option value="user">👤 User</option>
                             <option value="admin">👑 Admin</option>
@@ -206,13 +215,23 @@ export default function AdminPanel() {
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: 6 }}>
-                            <button className="btn btn-secondary btn-sm btn-icon" title="Bật/tắt tài khoản" onClick={() => toggleStatus(u.id)}>
+                            <button
+                              className="btn btn-secondary btn-sm btn-icon"
+                              title={u.id === currentUser?.id ? 'Không thể tắt tài khoản của chính mình' : 'Bật/tắt tài khoản'}
+                              disabled={u.id === currentUser?.id}
+                              onClick={() => toggleStatus(u.id)}
+                            >
                               {u.is_active ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
                             </button>
                             <button className="btn btn-primary btn-sm btn-icon" title="Đặt lại mật khẩu" onClick={() => setShowResetModal(u)}>
                               <Key size={14} />
                             </button>
-                            <button className="btn btn-danger btn-sm btn-icon" title="Xóa tài khoản" onClick={() => deleteUser(u.id, u.username)}>
+                            <button
+                              className="btn btn-danger btn-sm btn-icon"
+                              title={u.id === currentUser?.id ? 'Không thể xóa tài khoản của chính mình' : 'Xóa tài khoản'}
+                              disabled={u.id === currentUser?.id}
+                              onClick={() => deleteUser(u.id, u.username)}
+                            >
                               <Trash2 size={14} />
                             </button>
                           </div>
