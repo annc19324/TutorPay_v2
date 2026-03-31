@@ -74,53 +74,69 @@ router.get('/', async (req, res) => {
 router.get('/stats', async (req, res) => {
   try {
     const { month, year } = req.query;
-    let whereClause = "WHERE user_id = $1 AND status = 'completed'";
     const params = [req.user.id];
+    let dateFilter = '';
 
     if (month && year) {
-      whereClause += ` AND EXTRACT(MONTH FROM session_date) = $2 AND EXTRACT(YEAR FROM session_date) = $3`;
+      dateFilter = `AND EXTRACT(MONTH FROM sess.session_date) = $2 AND EXTRACT(YEAR FROM sess.session_date) = $3`;
       params.push(month, year);
     } else if (year) {
-      whereClause += ` AND EXTRACT(YEAR FROM session_date) = $2`;
+      dateFilter = `AND EXTRACT(YEAR FROM sess.session_date) = $2`;
       params.push(year);
+    }
+
+    // Summary totals - no join needed, simple query
+    const summaryParams = [req.user.id];
+    let summaryDate = '';
+    if (month && year) {
+      summaryDate = `AND EXTRACT(MONTH FROM session_date) = $2 AND EXTRACT(YEAR FROM session_date) = $3`;
+      summaryParams.push(month, year);
+    } else if (year) {
+      summaryDate = `AND EXTRACT(YEAR FROM session_date) = $2`;
+      summaryParams.push(year);
     }
 
     const result = await pool.query(
       `SELECT 
         COUNT(*) as total_sessions,
         COALESCE(SUM(duration_hours), 0) as total_hours,
-        COALESCE(SUM(total_amount), 0) as total_amount,
-        COALESCE(AVG(rate_per_hour), 0) as avg_rate
-       FROM sessions ${whereClause}`,
-      params
+        COALESCE(SUM(total_amount) FILTER (WHERE status = 'completed'), 0) as total_amount,
+        COALESCE(AVG(rate_per_hour) FILTER (WHERE status = 'completed'), 0) as avg_rate
+       FROM sessions
+       WHERE user_id = $1 ${summaryDate}`,
+      summaryParams
     );
 
-    // By student
+    // By student - explicit table-qualified columns to avoid ambiguity
     const byStudent = await pool.query(
       `SELECT st.full_name as student_name, sess.student_id,
               COUNT(*) as sessions,
-              SUM(duration_hours) as hours,
-              SUM(total_amount) as amount
+              COALESCE(SUM(sess.duration_hours), 0) as hours,
+              COALESCE(SUM(sess.total_amount), 0) as amount
        FROM sessions sess
        LEFT JOIN students st ON st.id = sess.student_id
-       ${whereClause}
+       WHERE sess.user_id = $1
+         AND sess.status = 'completed'
+         ${dateFilter.replace('sess.session_date', 'sess.session_date')}
        GROUP BY sess.student_id, st.full_name
        ORDER BY amount DESC`,
       params
     );
 
     // Monthly breakdown (current year)
+    const currentYear = year || new Date().getFullYear();
     const monthly = await pool.query(
       `SELECT EXTRACT(MONTH FROM session_date) as month,
               COUNT(*) as sessions,
-              SUM(duration_hours) as hours,
-              SUM(total_amount) as amount
+              COALESCE(SUM(duration_hours), 0) as hours,
+              COALESCE(SUM(total_amount), 0) as amount
        FROM sessions
-       WHERE user_id = $1 AND status = 'completed'
+       WHERE user_id = $1
+         AND status = 'completed'
          AND EXTRACT(YEAR FROM session_date) = $2
-       GROUP BY month
+       GROUP BY EXTRACT(MONTH FROM session_date)
        ORDER BY month`,
-      [req.user.id, year || new Date().getFullYear()]
+      [req.user.id, currentYear]
     );
 
     res.json({
@@ -129,8 +145,8 @@ router.get('/stats', async (req, res) => {
       monthly: monthly.rows
     });
   } catch (error) {
-    console.error('Stats error:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Stats error:', error.message, error.detail);
+    res.status(500).json({ message: 'Server error', detail: error.message });
   }
 });
 

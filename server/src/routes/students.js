@@ -9,22 +9,22 @@ router.use(authenticateToken);
 router.get('/', async (req, res) => {
   try {
     const { search = '', is_active } = req.query;
-    let whereClause = 'WHERE user_id = $1';
+    let whereClause = 'WHERE s.user_id = $1';
     const params = [req.user.id];
     let idx = 2;
 
     if (search) {
-      whereClause += ` AND (full_name ILIKE $${idx} OR parent_name ILIKE $${idx})`;
+      whereClause += ` AND (s.full_name ILIKE $${idx} OR s.parent_name ILIKE $${idx})`;
       params.push(`%${search}%`);
       idx++;
     }
-    if (is_active !== undefined) {
-      whereClause += ` AND is_active = $${idx}`;
+    if (is_active !== undefined && is_active !== '') {
+      whereClause += ` AND s.is_active = $${idx}`;
       params.push(is_active === 'true');
     }
 
     const result = await pool.query(
-      `SELECT s.*, 
+      `SELECT s.*,
               COUNT(DISTINCT sess.id) as session_count,
               COALESCE(SUM(sess.total_amount) FILTER (WHERE sess.status='completed'), 0) as total_owed
        FROM students s
@@ -36,8 +36,8 @@ router.get('/', async (req, res) => {
     );
     res.json({ students: result.rows });
   } catch (error) {
-    console.error('Get students error:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Get students error:', error.message, error.detail);
+    res.status(500).json({ message: 'Server error', detail: error.message });
   }
 });
 
