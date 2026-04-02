@@ -1,8 +1,9 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, BookOpen, Users, CreditCard, BarChart3,
-  Settings, LogOut, Shield, GraduationCap, ChevronRight, Clock
+  Settings, LogOut, Shield, GraduationCap, Clock, Menu, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -18,6 +19,22 @@ const navItems = [
 export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Close sidebar when route changes on mobile
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [location]);
+
+  // Prevent scrolling when sidebar is open on mobile
+  useEffect(() => {
+    if (isSidebarOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+  }, [isSidebarOpen]);
 
   const handleLogout = () => {
     logout();
@@ -25,9 +42,28 @@ export default function Layout() {
     navigate('/login');
   };
 
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+
   return (
-    <div className="app-layout">
-      <aside className="sidebar">
+    <div className={`app-layout ${isSidebarOpen ? 'sidebar-open' : ''}`}>
+      {/* Mobile Header */}
+      <header className="mobile-header">
+        <button className="menu-toggle" onClick={toggleSidebar}>
+          {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+        <div className="mobile-logo">
+          <GraduationCap size={20} color="white" />
+          <span>TutorPay</span>
+        </div>
+        <div style={{ width: 24 }}></div> {/* Spacer for symmetry */}
+      </header>
+
+      {/* Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div className="sidebar-overlay" onClick={() => setIsSidebarOpen(false)}></div>
+      )}
+
+      <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-logo">
           <div className="logo-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <GraduationCap size={24} color="white" />
